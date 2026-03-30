@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlavorVault</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #faf6f1;
+    --bg-deep: #f0e8dd;
+    --fg: #1a1209;
+    --fg-muted: #7a6e5d;
+    --accent: #e8572a;
+    --accent-hover: #d04420;
+    --accent-light: rgba(232,87,42,0.1);
+    --green: #2d8a4e;
+    --green-light: rgba(45,138,78,0.1);
+    --card: #ffffff;
+    --border: #e8dfd3;
+    --shadow: 0 4px 24px rgba(26,18,9,0.06);
+    --shadow-lg: 0 12px 48px rgba(26,18,9,0.1);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--fg);
+    line-height: 1.6; overflow-x: hidden;
+  }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+  body::before {
+    content: ''; position: fixed; top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(232,87,42,0.06) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; bottom: -300px; left: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(45,138,78,0.05) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .navbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: rgba(250,246,241,0.85); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border); transition: var(--transition);
+  }
+  .navbar.scrolled { box-shadow: var(--shadow); }
+  .nav-inner {
+    max-width: 1320px; margin: 0 auto; padding: 0 24px;
+    height: 68px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo {
+    font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 900;
+    color: var(--fg); text-decoration: none;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-logo .logo-icon {
+    width: 38px; height: 38px; background: var(--accent); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem;
+  }
+  .nav-links { display: flex; gap: 6px; align-items: center; }
+  .nav-link {
+    padding: 8px 16px; border-radius: var(--radius-sm); text-decoration: none;
+    color: var(--fg-muted); font-weight: 500; font-size: 0.9rem;
+    transition: var(--transition); cursor: pointer; border: none; background: none;
+  }
+  .nav-link:hover, .nav-link.active { color: var(--accent); background: var(--accent-light); }
+  .nav-actions { display: flex; gap: 8px; align-items: center; }
+  .cart-btn {
+    position: relative; width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--fg); font-size: 1.1rem; transition: var(--transition);
+  }
+  .cart-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cart-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--accent); color: #fff; font-size: 0.65rem; font-weight: 700;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+  }
+  .btn {
+    padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600;
+    font-size: 0.88rem; cursor: pointer; transition: var(--transition);
+    border: none; display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,87,42,0.3); }
+  .btn-outline { background: transparent; color: var(--fg); border: 1.5px solid var(--border); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #237041; transform: translateY(-1px); }
+  .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
+  .btn-danger { background: #dc2626; color: #fff; }
+  .btn-danger:hover { background: #b91c1c; }
+
+  .hero { margin-top: 68px; padding: 80px 24px 60px; position: relative; overflow: hidden; }
+  .hero-inner {
+    max-width: 1320px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+  }
+  .hero-text h1 {
+    font-family: 'Playfair Display', serif; font-size: 3.8rem;
+    font-weight: 900; line-height: 1.1; margin-bottom: 20px;
+  }
+  .hero-text h1 span { color: var(--accent); }
+  .hero-text p { color: var(--fg-muted); font-size: 1.15rem; max-width: 480px; margin-bottom: 32px; }
+  .hero-stats { display: flex; gap: 40px; margin-top: 40px; }
+  .hero-stat-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--accent); }
+  .hero-stat-label { font-size: 0.82rem; color: var(--fg-muted); margin-top: 2px; }
+  .hero-img { position: relative; height: 480px; border-radius: 24px; overflow: hidden; }
+  .hero-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 6s ease; }
+  .hero-img:hover img { transform: scale(1.05); }
+  .hero-float-card {
+    position: absolute; bottom: 20px; left: 20px;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hero-float-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: var(--green-light); color: var(--green);
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+  }
+  .hero-float-text strong { display: block; font-size: 0.9rem; }
+  .hero-float-text span { font-size: 0.78rem; color: var(--fg-muted); }
+
+  .section { padding: 60px 24px; position: relative; z-index: 1; }
+  .section-inner { max-width: 1320px; margin: 0 auto; }
+  .section-header { margin-bottom: 40px; }
+  .section-header h2 { font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 900; margin-bottom: 8px; }
+  .section-header p { color: var(--fg-muted); font-size: 1rem; }
+  .cat-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
+  .cat-pill {
+    padding: 8px 20px; border-radius: 50px; border: 1.5px solid var(--border);
+    background: var(--card); font-size: 0.85rem; font-weight: 500;
+    cursor: pointer; transition: var(--transition); color: var(--fg-muted);
+  }
+  .cat-pill:hover, .cat-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .search-bar { display: flex; gap: 12px; margin-bottom: 32px; max-width: 500px; }
+  .search-input {
+    flex: 1; padding: 12px 18px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 0.9rem; font-family: 'DM Sans', sans-serif; background: var(--card); color: var(--fg);
+    transition: var(--transition);
+  }
+  .search-input:focus { outline: none; border-color: var(--accent); }
+
+  .food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+  .food-card {
+    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+    overflow: hidden; transition: var(--transition); cursor: pointer;
+  }
+  .food-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .food-card-img { width: 100%; height: 200px; object-fit: cover; transition: transform 0.5s ease; }
+  .food-card:hover .food-card-img { transform: scale(1.06); }
+  .food-card-img-wrap { overflow: hidden; position: relative; }
+  .food-card-badge {
+    position: absolute; top: 12px; left: 12px; padding: 4px 12px; border-radius: 50px;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-popular { background: var(--accent); color: #fff; }
+  .badge-new { background: var(--green); color: #fff; }
+  .badge-spicy { background: #f59e0b; color: #fff; }
+  .food-card-body { padding: 18px; }
+  .food-card-cat { font-size: 0.75rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .food-card-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin: 6px 0; }
+  .food-card-desc { font-size: 0.83rem; color: var(--fg-muted); margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .food-card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .food-card-price { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 900; color: var(--accent); }
+  .food-card-rating { display: flex; align-items: center; gap: 4px; font-size: 0.82rem; color: var(--fg-muted); }
+  .food-card-rating i { color: #f59e0b; font-size: 0.75rem; }
+  .food-card-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+  .cart-overlay {
+    position: fixed; inset: 0; background: rgba(26,18,9,0.4); backdrop-filter: blur(4px);
+    z-index: 2000; opacity: 0; pointer-events: none; transition: var(--transition);
+  }
+  .cart-overlay.open { opacity: 1; pointer-events: all; }
+  .cart-sidebar {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 90vw;
+    background: var(--bg); z-index: 2001; transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column;
+  }
+  .cart-sidebar.open { transform: translateX(0); }
+  .cart-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .cart-header h3 { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; }
+  .cart-close {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--card); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; font-size: 1rem; color: var(--fg-muted); transition: var(--transition);
+  }
+  .cart-close:hover { color: var(--accent); border-color: var(--accent); }
+  .cart-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+  .cart-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); align-items: center; }
+  .cart-item-img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; }
+  .cart-item-info { flex: 1; }
+  .cart-item-name { font-weight: 600; font-size: 0.92rem; }
+  .cart-item-price { color: var(--accent); font-weight: 700; font-size: 0.9rem; }
+  .cart-item-qty { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .qty-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--card); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; font-size: 0.8rem; color: var(--fg); transition: var(--transition);
+  }
+  .qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cart-item-remove { color: var(--fg-muted); cursor: pointer; font-size: 0.85rem; transition: var(--transition); }
+  .cart-item-remove:hover { color: #dc2626; }
+  .cart-empty { text-align: center; padding: 60px 20px; color: var(--fg-muted); }
+  .cart-empty i { font-size: 3rem; margin-bottom: 16px; display: block; opacity: 0.3; }
+  .cart-footer { padding: 24px; border-top: 1px solid var(--border); }
+  .cart-total { display: flex; justify-content: space-between; margin-bottom: 16px; }
+  .cart-total-label { font-weight: 600; }
+  .cart-total-price { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 900; color: var(--accent); }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(26,18,9,0.5); backdrop-filter: blur(6px);
+    z-index: 3000; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: var(--transition);
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card); border-radius: 20px; padding: 36px; width: 440px;
+    max-width: 92vw; max-height: 90vh; overflow-y: auto;
+    transform: scale(0.9) translateY(20px);
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); box-shadow: var(--shadow-lg);
+  }
+  .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input {
+    width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 0.92rem; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--fg);
+    transition: var(--transition); letter-spacing: 0.5px;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+  .form-input::placeholder { color: #c4b8a6; letter-spacing: 0; }
+  textarea.form-input { resize: vertical; min-height: 80px; }
+  select.form-input { cursor: pointer; }
+  .form-error { font-size: 0.78rem; color: #dc2626; margin-top: 4px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+
+  /* Reset code input boxes */
+  .code-boxes { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+  .code-box {
+    width: 48px; height: 56px; text-align: center; font-size: 1.4rem; font-weight: 700;
+    border: 2px solid var(--border); border-radius: 10px; background: var(--bg);
+    font-family: 'DM Sans', sans-serif; color: var(--fg); transition: var(--transition);
+  }
+  .code-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+  /* Email sent illustration */
+  .email-sent-visual {
+    text-align: center; padding: 10px 0 20px;
+  }
+  .email-sent-icon {
+    width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 16px;
+    background: var(--green-light); display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; color: var(--green); animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+  /* Timer */
+  .resend-timer { font-size: 0.82rem; color: var(--fg-muted); text-align: center; margin-top: 12px; }
+  .resend-timer a { color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; }
+  .resend-timer a.disabled { color: var(--fg-muted); pointer-events: none; }
+
+  .toast-container { position: fixed; top: 80px; right: 24px; z-index: 5000; display: flex; flex-direction: column; gap: 10px; }
+  .toast {
+    padding: 14px 20px; border-radius: var(--radius-sm); background: var(--card);
+    border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 10px; font-size: 0.88rem; font-weight: 500;
+    animation: toastIn 0.4s ease, toastOut 0.4s ease 2.6s forwards; min-width: 260px;
+  }
+  .toast-success { border-left: 4px solid var(--green); }
+  .toast-success i { color: var(--green); }
+  .toast-error { border-left: 4px solid #dc2626; }
+  .toast-error i { color: #dc2626; }
+  .toast-info { border-left: 4px solid var(--accent); }
+  .toast-info i { color: var(--accent); }
+  @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes toastOut { to { transform: translateX(100%); opacity: 0; } }
+
+  .denied-icon {
+    width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px;
+    background: #fee2e2; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; color: #dc2626;
+  }
+  .denied-title { text-align: center; font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 900; color: #dc2626; margin-bottom: 8px; }
+  .denied-text { text-align: center; color: var(--fg-muted); font-size: 0.92rem; line-height: 1.6; }
+  .denied-actions { justify-content: center; margin-top: 24px; }
+
+  .admin-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; }
+  .admin-sidebar { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 0; height: fit-content; position: sticky; top: 92px; }
+  .admin-nav-item {
+    padding: 12px 20px; font-size: 0.88rem; font-weight: 500; color: var(--fg-muted);
+    cursor: pointer; transition: var(--transition); display: flex; align-items: center;
+    gap: 10px; border: none; background: none; width: 100%; text-align: left;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .admin-nav-item:hover, .admin-nav-item.active { color: var(--accent); background: var(--accent-light); }
+  .admin-nav-item i { width: 20px; text-align: center; }
+  .admin-content { min-height: 400px; }
+  .admin-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .admin-stat { padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); }
+  .admin-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 12px; }
+  .admin-stat-value { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 900; }
+  .admin-stat-label { font-size: 0.8rem; color: var(--fg-muted); margin-top: 2px; }
+  .admin-table { width: 100%; border-collapse: collapse; }
+  .admin-table th { text-align: left; padding: 12px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg-muted); border-bottom: 2px solid var(--border); font-weight: 600; }
+  .admin-table td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+  .admin-table tr:hover td { background: var(--accent-light); }
+  .admin-table-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+
+  .order-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 16px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;
+  }
+  .order-id-col { text-align: center; }
+  .order-id { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 900; color: var(--accent); }
+  .order-date { font-size: 0.75rem; color: var(--fg-muted); }
+  .order-total-col { text-align: right; }
+  .order-total { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 900; }
+  .order-status { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+  .status-pending { background: #fef3c7; color: #92400e; }
+  .status-preparing { background: #dbeafe; color: #1e40af; }
+  .status-delivered { background: var(--green-light); color: var(--green); }
+  .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+  .footer {
+    background: var(--fg); color: rgba(250,246,241,0.7);
+    padding: 60px 24px 30px; margin-top: 40px; position: relative; z-index: 1;
+  }
+  .footer-inner { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+  .footer-brand { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 900; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .footer-desc { font-size: 0.88rem; line-height: 1.7; max-width: 320px; }
+  .footer h4 { color: #fff; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .footer a { color: rgba(250,246,241,0.6); text-decoration: none; font-size: 0.88rem; display: block; padding: 4px 0; transition: var(--transition); }
+  .footer a:hover { color: var(--accent); }
+  .footer-bottom { max-width: 1320px; margin: 40px auto 0; padding-top: 20px; border-top: 1px solid rgba(250,246,241,0.1); text-align: center; font-size: 0.8rem; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+  .fade-in { animation: fadeIn 0.5s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .stagger-1 { animation-delay: 0.1s; opacity: 0; }
+  .stagger-2 { animation-delay: 0.2s; opacity: 0; }
+  .stagger-3 { animation-delay: 0.3s; opacity: 0; }
+  .stagger-4 { animation-delay: 0.4s; opacity: 0; }
+
+  .forgot-link {
+    display: block; text-align: center; margin-top: 16px;
+    font-size: 0.85rem; color: var(--fg-muted);
+    cursor: pointer; transition: var(--transition); text-decoration: none;
+  }
+  .forgot-link:hover { color: var(--accent); }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.85rem; color: var(--fg-muted); cursor: pointer;
+    transition: var(--transition); margin-bottom: 20px; border: none; background: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .mobile-toggle { display: none; background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--fg); }
+  @media (max-width: 900px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .hero-img { height: 300px; }
+    .hero-text h1 { font-size: 2.6rem; }
+    .nav-links { display: none; }
+    .mobile-toggle { display: block; }
+    .admin-grid { grid-template-columns: 1fr; }
+    .admin-sidebar { position: static; display: flex; gap: 4px; flex-wrap: wrap; padding: 10px; }
+    .admin-nav-item { padding: 8px 14px; }
+    .order-card { grid-template-columns: 1fr; text-align: center; }
+    .order-id-col, .order-total-col { text-align: center; }
+    .footer-inner { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .hero-text h1 { font-size: 2rem; }
+    .hero-stats { gap: 24px; }
+    .food-grid { grid-template-columns: 1fr; }
+    .footer-inner { grid-template-columns: 1fr; }
+    .search-bar { flex-direction: column; }
+    .code-box { width: 40px; height: 48px; font-size: 1.2rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<nav class="navbar" id="navbar">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo" onclick="navigate('home')">
+      <div class="logo-icon"><i class="fas fa-utensils"></i></div>
+      FlavorVault
+    </a>
+    <div class="nav-links" id="navLinks">
+      <button class="nav-link active" data-page="home" onclick="navigate('home')">Menu</button>
+      <button class="nav-link" data-page="orders" onclick="navigate('orders')">My Orders</button>
+      <button class="nav-link" data-page="admin" onclick="tryAdminAccess()">
+        <i class="fas fa-shield-halved" style="margin-right:4px"></i> Admin
+      </button>
+    </div>
+    <div class="nav-actions">
+      <button class="cart-btn" onclick="toggleCart()" aria-label="Open cart">
+        <i class="fas fa-shopping-bag"></i>
+        <span class="cart-badge" id="cartBadge" style="display:none">0</span>
+      </button>
+      <button class="btn btn-primary btn-sm" id="authBtn" onclick="openAuthModal()">
+        <i class="fas fa-user"></i> Sign In
+      </button>
+      <button class="mobile-toggle" onclick="toggleMobileNav()"><i class="fas fa-bars"></i></button>
+    </div>
+  </div>
+</nav>
+
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<aside class="cart-sidebar" id="cartSidebar">
+  <div class="cart-header">
+    <h3>Your Cart</h3>
+    <button class="cart-close" onclick="toggleCart()" aria-label="Close cart"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="cart-body" id="cartBody"></div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-total">
+      <span class="cart-total-label">Total</span>
+      <span class="cart-total-price" id="cartTotalPrice">$0.00</span>
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="placeOrder()">
+      <i class="fas fa-check"></i> Place Order
+    </button>
+  </div>
+</aside>
+
+<!-- Auth Modal (Login / Register / Forgot / Verify Code / New Password) -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <div id="authContent"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="foodModal">
+  <div class="modal" style="width:520px">
+    <div id="foodModalContent"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="adminFoodModal">
+  <div class="modal">
+    <h3 id="adminFoodModalTitle">Add Food Item</h3>
+    <div id="adminFoodForm"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deniedModal">
+  <div class="modal" style="width:400px;text-align:center">
+    <div class="denied-icon"><i class="fas fa-lock"></i></div>
+    <div class="denied-title">Access Denied</div>
+    <div class="denied-text">This section is restricted to administrators only.</div>
+    <div class="modal-actions denied-actions">
+      <button class="btn btn-outline" onclick="closeModal('deniedModal')"><i class="fas fa-arrow-left"></i> Go Back</button>
+    </div>
+  </div>
+</div>
+
+<main class="page active" id="page-home">
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text fade-in">
+        <h1>Discover <span>Extraordinary</span> Flavors</h1>
+        <p>Curated dishes from the finest kitchens, delivered fresh to your door.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="document.getElementById('menuSection').scrollIntoView({behavior:'smooth'})">
+            <i class="fas fa-compass"></i> Explore Menu
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div><div class="hero-stat-num">120+</div><div class="hero-stat-label">Dishes Available</div></div>
+          <div><div class="hero-stat-num">4.9</div><div class="hero-stat-label">Average Rating</div></div>
+          <div><div class="hero-stat-num">15k</div><div class="hero-stat-label">Happy Customers</div></div>
+        </div>
+      </div>
+      <div class="hero-img fade-in stagger-2">
+        <img src="https://picsum.photos/seed/foodhero42/800/600.jpg" alt="Delicious food">
+        <div class="hero-float-card">
+          <div class="hero-float-icon"><i class="fas fa-fire"></i></div>
+          <div class="hero-float-text">
+            <strong>Trending Now</strong>
+            <span>Truffle Mushroom Risotto</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="menuSection">
+    <div class="section-inner">
+      <div class="section-header">
+        <h2>Our Menu</h2>
+        <p>Fresh, flavorful, and crafted with passion</p>
+      </div>
+      <div class="search-bar">
+        <input type="text" class="search-input" placeholder="Search dishes..." id="searchInput" oninput="renderFoodGrid()">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('searchInput').value='';renderFoodGrid()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="cat-pills" id="catPills"></div>
+      <div class="food-grid" id="foodGrid"></div>
+    </div>
+  </section>
+</main>
+
+<main class="page" id="page-orders">
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <h2>My Orders</h2>
+        <p>Track and manage your orders</p>
+      </div>
+      <div id="ordersContainer"></div>
+    </div>
+  </section>
+</main>
+
+<main class="page" id="page-admin">
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <h2>Admin Dashboard</h2>
+        <p>Manage your food catalog and orders</p>
+      </div>
+      <div class="admin-grid">
+        <div class="admin-sidebar">
+          <button class="admin-nav-item active" data-admin="dashboard" onclick="switchAdmin('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</button>
+          <button class="admin-nav-item" data-admin="foods" onclick="switchAdmin('foods')"><i class="fas fa-hamburger"></i> Food Items</button>
+          <button class="admin-nav-item" data-admin="orders" onclick="switchAdmin('orders')"><i class="fas fa-receipt"></i> All Orders</button>
+        </div>
+        <div class="admin-content" id="adminContent"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand"><i class="fas fa-utensils"></i> FlavorVault</div>
+      <p class="footer-desc">A complete full-stack food ordering platform built with vanilla HTML, CSS, and JavaScript.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <a href="#" onclick="navigate('home')">Menu</a>
+      <a href="#" onclick="navigate('orders')">My Orders</a>
+    </div>
+    <div>
+      <h4>Categories</h4>
+      <a href="#" onclick="filterByCategory('Appetizers')">Appetizers</a>
+      <a href="#" onclick="filterByCategory('Main Course')">Main Course</a>
+      <a href="#" onclick="filterByCategory('Desserts')">Desserts</a>
+      <a href="#" onclick="filterByCategory('Drinks')">Drinks</a>
+    </div>
+    <div>
+      <h4>Stack</h4>
+      <a href="#">HTML5 / CSS3</a>
+      <a href="#">Vanilla JavaScript</a>
+      <a href="#">localStorage DB</a>
+      <a href="#">No Frameworks</a>
+    </div>
+  </div>
+  <div class="footer-bottom">FlavorVault &copy; 2025</div>
+</footer>
+
+<script>
+// ============================================================
+// AUTO-CLEAN old data from previous versions
+// ============================================================
+(function(){
+  const old=['seeded','seeded_v2','fv_seeded','fv_seeded_v2'];
+  let had=false;
+  old.forEach(k=>{ if(localStorage.getItem(k)!==null){ had=true; localStorage.removeItem(k); } });
+  if(had) Object.keys(localStorage).forEach(k=>{ if(k.startsWith('fv_')) localStorage.removeItem(k); });
+})();
+
+// ============================================================
+// BACKEND — localStorage Database
+// ============================================================
+const DB={
+  get(k){ try{return JSON.parse(localStorage.getItem('fv_'+k));}catch{return null;} },
+  set(k,v){ localStorage.setItem('fv_'+k,JSON.stringify(v)); }
+};
+const APP_VERSION=4;
+
+function seedData(){
+  if(DB.get('version')===APP_VERSION) return;
+  Object.keys(localStorage).forEach(k=>{ if(k.startsWith('fv_')) localStorage.removeItem(k); });
+
+  DB.set('foods',[
+    {id:1,name:'Truffle Mushroom Risotto',category:'Main Course',price:18.50,rating:4.9,reviews:234,badge:'popular',desc:'Creamy arborio rice with wild mushrooms, truffle oil, and aged parmesan.',img:'https://picsum.photos/seed/risotto1/600/400.jpg'},
+    {id:2,name:'Wagyu Beef Burger',category:'Main Course',price:22.00,rating:4.8,reviews:189,badge:'popular',desc:'Premium wagyu patty with caramelized onions, gruyere, and brioche bun.',img:'https://picsum.photos/seed/burger2/600/400.jpg'},
+    {id:3,name:'Crispy Calamari',category:'Appetizers',price:12.00,rating:4.7,reviews:156,badge:'new',desc:'Lightly battered squid rings with lemon aioli and marinara dipping sauces.',img:'https://picsum.photos/seed/calamari3/600/400.jpg'},
+    {id:4,name:'Margherita Pizza',category:'Main Course',price:14.50,rating:4.6,reviews:312,badge:null,desc:'Wood-fired dough with San Marzano tomatoes, fresh mozzarella, and basil.',img:'https://picsum.photos/seed/pizza4/600/400.jpg'},
+    {id:5,name:'Tiramisu',category:'Desserts',price:9.50,rating:4.9,reviews:278,badge:'popular',desc:'Classic Italian dessert with espresso-soaked ladyfingers and mascarpone cream.',img:'https://picsum.photos/seed/tiramisu5/600/400.jpg'},
+    {id:6,name:'Spicy Tuna Tartare',category:'Appetizers',price:15.00,rating:4.5,reviews:98,badge:'spicy',desc:'Fresh ahi tuna with sriracha, sesame oil, avocado, and wonton crisps.',img:'https://picsum.photos/seed/tuna6/600/400.jpg'},
+    {id:7,name:'Matcha Latte',category:'Drinks',price:5.50,rating:4.4,reviews:167,badge:'new',desc:'Ceremonial grade matcha whisked with oat milk and a touch of vanilla.',img:'https://picsum.photos/seed/matcha7/600/400.jpg'},
+    {id:8,name:'Grilled Salmon Bowl',category:'Main Course',price:19.00,rating:4.8,reviews:201,badge:null,desc:'Atlantic salmon with jasmine rice, edamame, pickled ginger, and ponzu drizzle.',img:'https://picsum.photos/seed/salmon8/600/400.jpg'},
+    {id:9,name:'Chocolate Lava Cake',category:'Desserts',price:11.00,rating:4.7,reviews:245,badge:'popular',desc:'Warm molten chocolate cake with vanilla bean ice cream and berry compote.',img:'https://picsum.photos/seed/lava9/600/400.jpg'},
+    {id:10,name:'Thai Basil Chicken',category:'Main Course',price:16.00,rating:4.6,reviews:134,badge:'spicy',desc:'Wok-fired chicken with Thai basil, chilies, garlic, and jasmine rice.',img:'https://picsum.photos/seed/thai10/600/400.jpg'},
+    {id:11,name:'Bruschetta Trio',category:'Appetizers',price:10.50,rating:4.3,reviews:89,badge:null,desc:'Three varieties: classic tomato, mushroom pate, and whipped ricotta with honey.',img:'https://picsum.photos/seed/brusch11/600/400.jpg'},
+    {id:12,name:'Cold Brew Coffee',category:'Drinks',price:4.50,rating:4.5,reviews:198,badge:null,desc:'Slow-steeped 20-hour cold brew served over ice with a smooth finish.',img:'https://picsum.photos/seed/coldbrew12/600/400.jpg'},
+  ]);
+  DB.set('users',[{id:1,name:'Admin',email:'admin@flavorvault.com',password:'admin1234',role:'admin',createdAt:new Date().toISOString()}]);
+  DB.set('orders',[
+    {id:1,userId:1,userName:'Admin',items:[{name:'Truffle Mushroom Risotto',price:18.50,qty:2,img:'https://picsum.photos/seed/risotto1/600/400.jpg'},{name:'Tiramisu',price:9.50,qty:1,img:'https://picsum.photos/seed/tiramisu5/600/400.jpg'}],total:46.50,status:'delivered',createdAt:new Date(Date.now()-86400000*2).toISOString()},
+    {id:2,userId:1,userName:'Admin',items:[{name:'Wagyu Beef Burger',price:22.00,qty:1,img:'https://picsum.photos/seed/burger2/600/400.jpg'},{name:'Matcha Latte',price:5.50,qty:2,img:'https://picsum.photos/seed/matcha7/600/400.jpg'}],total:33.00,status:'preparing',createdAt:new Date(Date.now()-3600000*3).toISOString()}
+  ]);
+  DB.set('cart',[]);
+  DB.set('currentUser',null);
+  DB.set('nextFoodId',13);
+  DB.set('nextOrderId',3);
+  DB.set('resetCodes',{}); // { email: { code, expires } }
+  DB.set('version',APP_VERSION);
+}
+
+function isAdmin(){ const u=getCurrentUser(); return u&&u.role==='admin'; }
+function getCurrentUser(){ return DB.get('currentUser'); }
+function setCurrentUser(u){ DB.set('currentUser',u); updateAuthUI(); }
+function logoutUser(){ DB.set('currentUser',null); updateAuthUI(); navigate('home'); showToast('Logged out','info'); }
+
+// ---- Auth ----
+function registerUser(name,email,password){
+  const users=DB.get('users')||[];
+  if(users.find(u=>u.email===email)) return {error:'Email already registered'};
+  if(password.length<6) return {error:'Password must be at least 6 characters'};
+  const user={id:Date.now(),name,email,password,role:'user',createdAt:new Date().toISOString()};
+  users.push(user); DB.set('users',users);
+  return {success:true,user:{id:user.id,name:user.name,email:user.email,role:user.role}};
+}
+
+function loginUser(email,password){
+  const users=DB.get('users')||[];
+  const user=users.find(u=>u.email===email&&u.password===password);
+  if(!user) return {error:'Invalid email or password'};
+  return {success:true,user:{id:user.id,name:user.name,email:user.email,role:user.role}};
+}
+
+// ---- Password Reset Backend ----
+function generateResetCode(email){
+  const users=DB.get('users')||[];
+  const user=users.find(u=>u.email===email);
+  if(!user) return {error:'No account found with this email'};
+  if(user.role==='admin') return {error:'Admin accounts cannot be reset here. Contact system administrator.'};
+  const code=String(Math.floor(100000+Math.random()*900000));
+  const codes=DB.get('resetCodes')||{};
+  codes[email]={code,expires:Date.now()+300000}; // 5 minutes
+  DB.set('resetCodes',codes);
+  return {success:true,code,userEmail:email};
+}
+
+function verifyResetCode(email,code){
+  const codes=DB.get('resetCodes')||{};
+  const entry=codes[email];
+  if(!entry) return {error:'No reset request found. Please request a new code.'};
+  if(Date.now()>entry.expires){ delete codes[email]; DB.set('resetCodes',codes); return {error:'Code expired. Please request a new one.'}; }
+  if(entry.code!==code) return {error:'Incorrect code. Please try again.'};
+  return {success:true};
+}
+
+function setNewPassword(email,newPassword){
+  if(newPassword.length<6) return {error:'Password must be at least 6 characters'};
+  const users=DB.get('users')||[];
+  const user=users.find(u=>u.email===email);
+  if(!user) return {error:'User not found'};
+  user.password=newPassword;
+  DB.set('users',users);
+  const codes=DB.get('resetCodes')||{};
+  delete codes[email]; DB.set('resetCodes',codes); // clean up
+  return {success:true};
+}
+
+// ---- Cart ----
+function getCart(){ return DB.get('cart')||[]; }
+function setCart(c){ DB.set('cart',c); updateCartBadge(); }
+function addToCart(fid){
+  const cart=getCart(); const f=(DB.get('foods')||[]).find(x=>x.id===fid);
+  if(!f) return;
+  const ex=cart.find(c=>c.foodId===fid);
+  if(ex) ex.qty++; else cart.push({foodId:fid,qty:1});
+  setCart(cart); showToast(`${f.name} added to cart`,'success');
+}
+function updateCartQty(fid,d){
+  let cart=getCart(); const item=cart.find(c=>c.foodId===fid);
+  if(!item) return; item.qty+=d;
+  if(item.qty<=0) cart=cart.filter(c=>c.foodId!==fid);
+  setCart(cart); renderCart();
+}
+function removeFromCart(fid){ setCart(getCart().filter(c=>c.foodId!==fid)); renderCart(); showToast('Item removed','info'); }
+function clearCart(){ setCart([]); renderCart(); }
+
+// ---- Orders ----
+function placeOrder(){
+  const user=getCurrentUser();
+  if(!user){ showToast('Please sign in first','error'); return; }
+  const cart=getCart();
+  if(!cart.length){ showToast('Cart is empty','error'); return; }
+  const foods=DB.get('foods')||[]; const orders=DB.get('orders')||[];
+  let nid=DB.get('nextOrderId')||1;
+  const items=cart.map(c=>{ const f=foods.find(x=>x.id===c.foodId); return {name:f?.name||'?',price:f?.price||0,qty:c.qty,img:f?.img||''}; });
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const order={id:nid++,userId:user.id,userName:user.name,items,total,status:'pending',createdAt:new Date().toISOString()};
+  orders.unshift(order); DB.set('orders',orders); DB.set('nextOrderId',nid);
+  clearCart(); toggleCart(); showToast(`Order #${order.id} placed!`,'success'); navigate('orders');
+}
+function updateOrderStatus(oid,s){
+  const orders=DB.get('orders')||[]; const o=orders.find(x=>x.id===oid);
+  if(o){o.status=s; DB.set('orders',orders); showToast(`Order #${oid} → ${s}`,'success'); switchAdmin('orders');}
+}
+function getUserOrders(){ const u=getCurrentUser(); if(!u) return []; return (DB.get('orders')||[]).filter(o=>o.userId===u.id); }
+
+// ---- Food CRUD ----
+function addFood(d){ const fs=DB.get('foods')||[]; let nid=DB.get('nextFoodId')||1; const f={id:nid++,...d}; fs.push(f); DB.set('foods',fs); DB.set('nextFoodId',nid); return f; }
+function updateFood(id,d){ const fs=DB.get('foods')||[]; const i=fs.findIndex(f=>f.id===id); if(i===-1) return null; fs[i]={...fs[i],...d}; DB.set('foods',fs); return fs[i]; }
+function deleteFood(id){ DB.set('foods',(DB.get('foods')||[]).filter(f=>f.id!==id)); setCart(getCart().filter(c=>c.foodId!==id)); }
+
+// ============================================================
+// FRONTEND — Auth Modal with Forgot Password Flow
+// ============================================================
+let authMode='login';
+let resetEmail=''; // stores email during reset flow
+let resendTimer=null;
+
+function openAuthModal(mode){
+  authMode=mode||'login';
+  renderAuthStep();
+  openModal('authModal');
+}
+
+function renderAuthStep(){
+  const el=document.getElementById('authContent');
+  if(resendTimer){ clearInterval(resendTimer); resendTimer=null; }
+
+  if(authMode==='login'){
+    el.innerHTML=`
+      <h3>Sign In</h3>
+      <div class="form-group"><label>Email</label><input class="form-input" id="authEmail" type="email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input class="form-input" id="authPass" type="password" placeholder="Your password"></div>
+      <div id="authError" class="form-error" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" style="flex:1" onclick="handleAuth()"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+      </div>
+      <a class="forgot-link" onclick="authMode='forgot';renderAuthStep()">Forgot your password?</a>
+      <p style="text-align:center;margin-top:16px;font-size:0.85rem;color:var(--fg-muted)">
+        Don't have an account? <a href="#" style="color:var(--accent);font-weight:600" onclick="authMode='register';renderAuthStep();return false">Sign Up</a>
+      </p>`;
+  }
+  else if(authMode==='register'){
+    el.innerHTML=`
+      <h3>Create Account</h3>
+      <div class="form-group"><label>Full Name</label><input class="form-input" id="authName" placeholder="John Doe"></div>
+      <div class="form-group"><label>Email</label><input class="form-input" id="authEmail" type="email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input class="form-input" id="authPass" type="password" placeholder="Min 6 characters"></div>
+      <div id="authError" class="form-error" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" style="flex:1" onclick="handleAuth()"><i class="fas fa-user-plus"></i> Create Account</button>
+      </div>
+      <p style="text-align:center;margin-top:16px;font-size:0.85rem;color:var(--fg-muted)">
+        Already have an account? <a href="#" style="color:var(--accent);font-weight:600" onclick="authMode='login';renderAuthStep();return false">Sign In</a>
+      </p>`;
+  }
+  else if(authMode==='forgot'){
+    el.innerHTML=`
+      <button class="back-link" onclick="authMode='login';renderAuthStep()"><i class="fas fa-arrow-left"></i> Back to Sign In</button>
+      <h3>Reset Password</h3>
+      <p style="color:var(--fg-muted);font-size:0.92rem;margin-bottom:20px">Enter your email and we'll send you a 6-digit verification code to reset your password.</p>
+      <div class="form-group"><label>Email Address</label><input class="form-input" id="resetEmailInput" type="email" placeholder="you@example.com"></div>
+      <div id="authError" class="form-error" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" style="flex:1" onclick="handleSendResetCode()"><i class="fas fa-paper-plane"></i> Send Reset Code</button>
+      </div>`;
+  }
+  else if(authMode==='verify'){
+    el.innerHTML=`
+      <button class="back-link" onclick="authMode='forgot';renderAuthStep()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="email-sent-visual">
+        <div class="email-sent-icon"><i class="fas fa-envelope-open-text"></i></div>
+      </div>
+      <h3 style="text-align:center">Check Your Email</h3>
+      <p style="text-align:center;color:var(--fg-muted);font-size:0.9rem;margin-bottom:4px">We sent a 6-digit code to</p>
+      <p style="text-align:center;font-weight:700;color:var(--fg);font-size:0.95rem;margin-bottom:16px">${resetEmail}</p>
+      <div class="code-boxes">
+        <input class="code-box" type="text" maxlength="1" id="c0" oninput="codeInput(0)" onkeydown="codeKey(event,0)">
+        <input class="code-box" type="text" maxlength="1" id="c1" oninput="codeInput(1)" onkeydown="codeKey(event,1)">
+        <input class="code-box" type="text" maxlength="1" id="c2" oninput="codeInput(2)" onkeydown="codeKey(event,2)">
+        <input class="code-box" type="text" maxlength="1" id="c3" oninput="codeInput(3)" onkeydown="codeKey(event,3)">
+        <input class="code-box" type="text" maxlength="1" id="c4" oninput="codeInput(4)" onkeydown="codeKey(event,4)">
+        <input class="code-box" type="text" maxlength="1" id="c5" oninput="codeInput(5)" onkeydown="codeKey(event,5)">
+      </div>
+      <div id="authError" class="form-error" style="display:none;text-align:center"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" style="flex:1" onclick="handleVerifyCode()"><i class="fas fa-check-circle"></i> Verify Code</button>
+      </div>
+      <div class="resend-timer" id="resendTimer"></div>`;
+    setTimeout(()=>document.getElementById('c0')?.focus(),100);
+    startResendTimer();
+  }
+  else if(authMode==='newpass'){
+    el.innerHTML=`
+      <button class="back-link" onclick="authMode='forgot';renderAuthStep()"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="email-sent-visual">
+        <div class="email-sent-icon" style="background:var(--accent-light);color:var(--accent)"><i class="fas fa-key"></i></div>
+      </div>
+      <h3 style="text-align:center">Set New Password</h3>
+      <p style="text-align:center;color:var(--fg-muted);font-size:0.9rem;margin-bottom:20px">Choose a strong password for your account</p>
+      <div class="form-group"><label>New Password</label><input class="form-input" id="newPass1" type="password" placeholder="Min 6 characters"></div>
+      <div class="form-group"><label>Confirm Password</label><input class="form-input" id="newPass2" type="password" placeholder="Re-enter password"></div>
+      <div id="authError" class="form-error" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-green" style="flex:1" onclick="handleSetNewPassword()"><i class="fas fa-save"></i> Reset Password</button>
+      </div>`;
+  }
+  else if(authMode==='success'){
+    el.innerHTML=`
+      <div class="email-sent-visual">
+        <div class="email-sent-icon"><i class="fas fa-check"></i></div>
+      </div>
+      <h3 style="text-align:center">Password Reset Successfully</h3>
+      <p style="text-align:center;color:var(--fg-muted);font-size:0.92rem;margin-bottom:24px">Your password has been updated. You can now sign in with your new password.</p>
+      <div class="modal-actions" style="justify-content:center">
+        <button class="btn btn-primary" onclick="authMode='login';renderAuthStep()"><i class="fas fa-sign-in-alt"></i> Sign In Now</button>
+      </div>`;
+  }
+}
+
+// ---- Code box helpers ----
+function codeInput(i){
+  const el=document.getElementById('c'+i);
+  if(!el) return;
+  el.value=el.value.replace(/[^0-9]/g,'');
+  if(el.value && i<5) document.getElementById('c'+(i+1))?.focus();
+}
+function codeKey(e,i){
+  if(e.key==='Backspace' && !document.getElementById('c'+i).value && i>0){
+    document.getElementById('c'+(i-1))?.focus();
+  }
+}
+function getEnteredCode(){
+  let code='';
+  for(let i=0;i<6;i++) code+=document.getElementById('c'+i)?.value||'';
+  return code;
+}
+
+// ---- Resend timer ----
+function startResendTimer(){
+  let seconds=60;
+  const el=document.getElementById('resendTimer');
+  if(!el) return;
+  function tick(){
+    if(seconds>0){
+      el.innerHTML=`Resend code in <strong>${seconds}s</strong>`;
+      seconds--;
+    } else {
+      el.innerHTML=`<a onclick="handleResendCode()">Resend verification code</a>`;
+      clearInterval(resendTimer);
+    }
+  }
+  tick();
+  resendTimer=setInterval(tick,1000);
+}
+
+// ---- Handle: Send reset code ----
+function handleSendResetCode(){
+  const email=document.getElementById('resetEmailInput').value.trim();
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';
+  if(!email){ errEl.textContent='Please enter your email'; errEl.style.display='block'; return; }
+  const result=generateResetCode(email);
+  if(result.error){ errEl.textContent=result.error; errEl.style.display='block'; return; }
+  resetEmail=email;
+  authMode='verify';
+  renderAuthStep();
+  // Show the code in a toast (simulating "sent to email")
+  showToast(`Reset code: ${result.code} (simulated email)`, 'info');
+}
+
+// ---- Handle: Resend code ----
+function handleResendCode(){
+  const result=generateResetCode(resetEmail);
+  if(result.error){ showToast(result.error,'error'); return; }
+  authMode='verify';
+  renderAuthStep();
+  showToast(`New reset code: ${result.code}`, 'info');
+}
+
+// ---- Handle: Verify code ----
+function handleVerifyCode(){
+  const code=getEnteredCode();
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';
+  if(code.length<6){ errEl.textContent='Please enter the full 6-digit code'; errEl.style.display='block'; return; }
+  const result=verifyResetCode(resetEmail,code);
+  if(result.error){ errEl.textContent=result.error; errEl.style.display='block'; return; }
+  authMode='newpass';
+  renderAuthStep();
+}
+
+// ---- Handle: Set new password ----
+function handleSetNewPassword(){
+  const p1=document.getElementById('newPass1').value;
+  const p2=document.getElementById('newPass2').value;
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';
+  if(!p1||!p2){ errEl.textContent='Please fill in both fields'; errEl.style.display='block'; return; }
+  if(p1!==p2){ errEl.textContent='Passwords do not match'; errEl.style.display='block'; return; }
+  const result=setNewPassword(resetEmail,p1);
+  if(result.error){ errEl.textContent=result.error; errEl.style.display='block'; return; }
+  authMode='success';
+  renderAuthStep();
+  showToast('Password reset successfully!','success');
+}
+
+// ---- Handle: Normal login/register ----
+function handleAuth(){
+  const email=(document.getElementById('authEmail')?.value||'').trim();
+  const pass=document.getElementById('authPass')?.value||'';
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';
+  if(!email||!pass){ errEl.textContent='Please fill in all fields'; errEl.style.display='block'; return; }
+  let result;
+  if(authMode==='login'){
+    result=loginUser(email,pass);
+  } else {
+    const name=(document.getElementById('authName')?.value||'').trim();
+    if(!name){ errEl.textContent='Please enter your name'; errEl.style.display='block'; return; }
+    result=registerUser(name,email,pass);
+  }
+  if(result.error){ errEl.textContent=result.error; errEl.style.display='block'; return; }
+  setCurrentUser(result.user);
+  closeModal('authModal');
+  showToast(`Welcome, ${result.user.name}!`,'success');
+}
+
+// ---- Auth UI update ----
+function updateAuthUI(){
+  const user=getCurrentUser();
+  const btn=document.getElementById('authBtn');
+  if(user){
+    const shield=user.role==='admin'?' <i class="fas fa-shield-halved" style="font-size:0.7rem;color:#f59e0b" title="Admin"></i>':'';
+    btn.innerHTML=`<i class="fas fa-user-check"></i> ${user.name.split(' ')[0]}${shield}`;
+    btn.onclick=()=>{ if(confirm('Sign out?')) logoutUser(); };
+    btn.className='btn btn-green btn-sm';
+  } else {
+    btn.innerHTML=`<i class="fas fa-user"></i> Sign In`;
+    btn.onclick=()=>openAuthModal();
+    btn.className='btn btn-primary btn-sm';
+  }
+}
+
+// ============================================================
+// ACCESS CONTROL
+// ============================================================
+function tryAdminAccess(){ if(isAdmin()) navigate('admin'); else openModal('deniedModal'); }
+function guardAdmin(){ if(!isAdmin()){ navigate('home'); openModal('deniedModal'); return false; } return true; }
+
+// ============================================================
+// FOOD GRID
+// ============================================================
+let activeCategory='All';
+function getCategories(){ return ['All',...new Set((DB.get('foods')||[]).map(f=>f.category))]; }
+function renderCatPills(){
+  document.getElementById('catPills').innerHTML=getCategories().map(c=>
+    `<button class="cat-pill ${c===activeCategory?'active':''}" onclick="filterByCategory('${c}')">${c}</button>`).join('');
+}
+function filterByCategory(cat){
+  activeCategory=cat; navigate('home');
+  setTimeout(()=>{ renderCatPills(); renderFoodGrid(); document.getElementById('menuSection').scrollIntoView({behavior:'smooth'}); },50);
+}
+function renderFoodGrid(){
+  const foods=DB.get('foods')||[];
+  const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  let filtered=foods;
+  if(activeCategory!=='All') filtered=filtered.filter(f=>f.category===activeCategory);
+  if(search) filtered=filtered.filter(f=>f.name.toLowerCase().includes(search)||f.category.toLowerCase().includes(search)||f.desc.toLowerCase().includes(search));
+  const grid=document.getElementById('foodGrid');
+  if(!filtered.length){ grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--fg-muted)"><i class="fas fa-search" style="font-size:2.5rem;opacity:0.2;display:block;margin-bottom:16px"></i>No dishes found</div>`; return; }
+  grid.innerHTML=filtered.map((f,i)=>{
+    const b=f.badge?`<span class="food-card-badge badge-${f.badge}">${f.badge}</span>`:'';
+    return `<div class="food-card fade-in stagger-${(i%4)+1}" onclick="openFoodDetail(${f.id})">
+      <div class="food-card-img-wrap"><img class="food-card-img" src="${f.img}" alt="${f.name}" loading="lazy">${b}</div>
+      <div class="food-card-body">
+        <div class="food-card-cat">${f.category}</div>
+        <div class="food-card-name">${f.name}</div>
+        <div class="food-card-desc">${f.desc}</div>
+        <div class="food-card-footer"><div class="food-card-price">$${f.price.toFixed(2)}</div><div class="food-card-rating"><i class="fas fa-star"></i> ${f.rating} (${f.reviews})</div></div>
+        <div class="food-card-actions">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();addToCart(${f.id})"><i class="fas fa-plus"></i> Add to Cart</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openFoodDetail(${f.id})" aria-label="View"><i class="fas fa-eye"></i></button>
+        </div>
+      </div></div>`;
+  }).join('');
+}
+function openFoodDetail(id){
+  const f=(DB.get('foods')||[]).find(x=>x.id===id); if(!f) return;
+  const b=f.badge?`<span class="food-card-badge badge-${f.badge}" style="position:static;display:inline-block;margin-bottom:12px">${f.badge}</span>`:'';
+  document.getElementById('foodModalContent').innerHTML=`
+    <img src="${f.img}" alt="${f.name}" style="width:100%;height:220px;object-fit:cover;border-radius:12px;margin-bottom:20px">
+    ${b}<div style="font-size:0.78rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${f.category}</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;margin:8px 0">${f.name}</h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--accent)">$${f.price.toFixed(2)}</span>
+      <span style="color:var(--fg-muted);font-size:0.88rem"><i class="fas fa-star" style="color:#f59e0b"></i> ${f.rating} (${f.reviews})</span></div>
+    <p style="color:var(--fg-muted);font-size:0.92rem;margin-bottom:24px;line-height:1.7">${f.desc}</p>
+    <button class="btn btn-primary" style="width:100%" onclick="addToCart(${f.id});closeModal('foodModal')"><i class="fas fa-cart-plus"></i> Add to Cart — $${f.price.toFixed(2)}</button>`;
+  openModal('foodModal');
+}
+
+// ---- Cart ----
+function renderCart(){
+  const cart=getCart(); const foods=DB.get('foods')||[];
+  const body=document.getElementById('cartBody'); const footer=document.getElementById('cartFooter');
+  if(!cart.length){ body.innerHTML=`<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p></div>`; footer.style.display='none'; return; }
+  let total=0;
+  body.innerHTML=cart.map(c=>{
+    const f=foods.find(x=>x.id===c.foodId); if(!f) return '';
+    const sub=f.price*c.qty; total+=sub;
+    return `<div class="cart-item"><img class="cart-item-img" src="${f.img}" alt="${f.name}">
+      <div class="cart-item-info"><div class="cart-item-name">${f.name}</div><div class="cart-item-price">$${sub.toFixed(2)}</div>
+        <div class="cart-item-qty">
+          <button class="qty-btn" onclick="updateCartQty(${f.id},-1)"><i class="fas fa-minus"></i></button>
+          <span style="font-weight:600;min-width:20px;text-align:center">${c.qty}</span>
+          <button class="qty-btn" onclick="updateCartQty(${f.id},1)"><i class="fas fa-plus"></i></button>
+        </div></div>
+      <span class="cart-item-remove" onclick="removeFromCart(${f.id})"><i class="fas fa-trash-alt"></i></span></div>`;
+  }).join('');
+  document.getElementById('cartTotalPrice').textContent=`$${total.toFixed(2)}`; footer.style.display='block';
+}
+function updateCartBadge(){
+  const count=getCart().reduce((s,c)=>s+c.qty,0);
+  const b=document.getElementById('cartBadge'); b.textContent=count; b.style.display=count>0?'flex':'none';
+}
+function toggleCart(){
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.getElementById('cartSidebar').classList.toggle('open'); renderCart();
+}
+
+// ---- Orders ----
+function renderOrders(){
+  const user=getCurrentUser(); const c=document.getElementById('ordersContainer');
+  if(!user){ c.innerHTML=`<div style="text-align:center;padding:60px;color:var(--fg-muted)"><i class="fas fa-lock" style="font-size:2.5rem;opacity:0.2;display:block;margin-bottom:16px"></i><p style="font-size:1.1rem;margin-bottom:12px">Please sign in to view orders</p><button class="btn btn-primary" onclick="openAuthModal('login')"><i class="fas fa-sign-in-alt"></i> Sign In</button></div>`; return; }
+  const orders=getUserOrders();
+  if(!orders.length){ c.innerHTML=`<div style="text-align:center;padding:60px;color:var(--fg-muted)"><i class="fas fa-receipt" style="font-size:2.5rem;opacity:0.2;display:block;margin-bottom:16px"></i><p style="font-size:1.1rem;margin-bottom:12px">No orders yet</p><button class="btn btn-primary" onclick="navigate('home')"><i class="fas fa-compass"></i> Browse Menu</button></div>`; return; }
+  c.innerHTML=orders.map(o=>{
+    const d=new Date(o.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div class="order-card fade-in"><div class="order-id-col"><div class="order-id">#${String(o.id).padStart(4,'0')}</div><div class="order-date">${d}</div></div>
+      <div><div style="font-weight:600;margin-bottom:4px">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><span class="order-status status-${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></div>
+      <div class="order-total-col"><div class="order-total">$${o.total.toFixed(2)}</div></div></div>`;
+  }).join('');
+}
+
+// ---- Admin ----
+let adminTab='dashboard';
+function switchAdmin(tab){
+  if(!guardAdmin()) return; adminTab=tab;
+  document.querySelectorAll('.admin-nav-item').forEach(el=>el.classList.toggle('active',el.dataset.admin===tab));
+  const c=document.getElementById('adminContent');
+  if(tab==='dashboard'){
+    const fs=DB.get('foods')||[],os=DB.get('orders')||[],us=DB.get('users')||[],rev=os.reduce((s,o)=>s+o.total,0);
+    c.innerHTML=`<div class="admin-stat-grid fade-in">
+      <div class="admin-stat"><div class="admin-stat-icon" style="background:var(--accent-light);color:var(--accent)"><i class="fas fa-hamburger"></i></div><div class="admin-stat-value">${fs.length}</div><div class="admin-stat-label">Food Items</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon" style="background:var(--green-light);color:var(--green)"><i class="fas fa-receipt"></i></div><div class="admin-stat-value">${os.length}</div><div class="admin-stat-label">Total Orders</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon" style="background:#fef3c7;color:#92400e"><i class="fas fa-dollar-sign"></i></div><div class="admin-stat-value">$${rev.toFixed(0)}</div><div class="admin-stat-label">Revenue</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon" style="background:#ede9fe;color:#7c3aed"><i class="fas fa-users"></i></div><div class="admin-stat-value">${us.length}</div><div class="admin-stat-label">Users</div></div></div>
+    <div class="admin-card fade-in stagger-2"><h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-bottom:16px">Recent Orders</h3>
+    ${!os.length?'<p style="color:var(--fg-muted)">No orders</p>':`<table class="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>${os.slice(0,5).map(o=>`<tr><td style="font-weight:700;color:var(--accent)">#${String(o.id).padStart(4,'0')}</td><td>${o.userName}</td><td style="color:var(--fg-muted)">${o.items.map(i=>i.name).join(', ')}</td><td style="font-weight:700">$${o.total.toFixed(2)}</td><td><span class="order-status status-${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></td></tr>`).join('')}</tbody></table>`}</div>`;
+  }
+  else if(tab==='foods'){
+    const fs=DB.get('foods')||[];
+    c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px" class="fade-in"><h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">Food Items (${fs.length})</h3><button class="btn btn-primary btn-sm" onclick="openAdminFoodModal()"><i class="fas fa-plus"></i> Add New</button></div>
+    <div class="admin-card fade-in stagger-1">${!fs.length?'<p style="color:var(--fg-muted)">No items</p>':`<table class="admin-table"><thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Rating</th><th>Actions</th></tr></thead><tbody>${fs.map(f=>`<tr><td><img class="admin-table-img" src="${f.img}" alt="${f.name}"></td><td style="font-weight:600">${f.name}</td><td><span style="font-size:0.78rem;color:var(--accent);font-weight:600">${f.category}</span></td><td style="font-weight:700">$${f.price.toFixed(2)}</td><td><i class="fas fa-star" style="color:#f59e0b;font-size:0.75rem"></i> ${f.rating}</td><td><button class="btn btn-outline btn-sm" onclick="openAdminFoodModal(${f.id})" style="margin-right:4px"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm" onclick="confirmDeleteFood(${f.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('')}</tbody></table>`}</div>`;
+  }
+  else if(tab==='orders'){
+    const os=DB.get('orders')||[];
+    c.innerHTML=`<div style="margin-bottom:20px" class="fade-in"><h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">All Orders (${os.length})</h3></div>
+    ${!os.length?'<div class="admin-card fade-in"><p style="color:var(--fg-muted)">No orders</p></div>':os.map(o=>{
+      const d=new Date(o.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<div class="admin-card fade-in" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><div><span style="font-weight:700;color:var(--accent)">#${String(o.id).padStart(4,'0')}</span><span style="color:var(--fg-muted);font-size:0.82rem;margin-left:12px">${d}</span><span style="color:var(--fg-muted);font-size:0.82rem;margin-left:12px">${o.userName}</span></div><div style="display:flex;align-items:center;gap:12px"><select class="form-input" style="width:auto;padding:6px 12px;font-size:0.82rem" onchange="updateOrderStatus(${o.id},this.value)">${['pending','preparing','delivered','cancelled'].map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}</select><span style="font-family:'Playfair Display',serif;font-weight:900;font-size:1.1rem">$${o.total.toFixed(2)}</span></div></div><div style="margin-top:10px;font-size:0.85rem;color:var(--fg-muted)">${o.items.map(i=>`${i.qty}x ${i.name}`).join(' &middot; ')}</div></div>`;
+    }).join('')}`;
+  }
+}
+
+function openAdminFoodModal(editId){
+  if(!guardAdmin()) return; const isEdit=!!editId;
+  document.getElementById('adminFoodModalTitle').textContent=isEdit?'Edit Food Item':'Add Food Item';
+  const food=isEdit?(DB.get('foods')||[]).find(f=>f.id===editId):null;
+  document.getElementById('adminFoodForm').innerHTML=`
+    <div class="form-group"><label>Name</label><input class="form-input" id="afName" value="${food?.name||''}" placeholder="Dish name"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Category</label><select class="form-input" id="afCat">${['Appetizers','Main Course','Desserts','Drinks'].map(c=>`<option value="${c}" ${food?.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Price ($)</label><input class="form-input" id="afPrice" type="number" step="0.01" min="0" value="${food?.price||''}" placeholder="0.00"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Rating</label><input class="form-input" id="afRating" type="number" step="0.1" min="0" max="5" value="${food?.rating||'4.5'}"></div>
+      <div class="form-group"><label>Badge</label><select class="form-input" id="afBadge"><option value="">None</option>${['popular','new','spicy'].map(b=>`<option value="${b}" ${food?.badge===b?'selected':''}>${b}</option>`).join('')}</select></div></div>
+    <div class="form-group"><label>Image URL</label><input class="form-input" id="afImg" value="${food?.img||''}" placeholder="https://picsum.photos/seed/example/600/400.jpg"></div>
+    <div class="form-group"><label>Description</label><textarea class="form-input" id="afDesc" placeholder="Describe the dish...">${food?.desc||''}</textarea></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('adminFoodModal')">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="handleAdminFoodSave(${editId||0})"><i class="fas fa-${isEdit?'save':'plus'}"></i> ${isEdit?'Update':'Add'}</button></div>`;
+  openModal('adminFoodModal');
+}
+function handleAdminFoodSave(editId){
+  const name=document.getElementById('afName').value.trim(),cat=document.getElementById('afCat').value,
+    price=parseFloat(document.getElementById('afPrice').value),rating=parseFloat(document.getElementById('afRating').value),
+    badge=document.getElementById('afBadge').value||null,img=document.getElementById('afImg').value.trim()||`https://picsum.photos/seed/food${Date.now()}/600/400.jpg`,
+    desc=document.getElementById('afDesc').value.trim();
+  if(!name){showToast('Enter a name','error');return;} if(isNaN(price)||price<=0){showToast('Invalid price','error');return;}
+  if(isNaN(rating)||rating<0||rating>5){showToast('Rating 0-5','error');return;}
+  if(editId){updateFood(editId,{name,cat,price,rating,badge,img,desc});showToast('Updated','success');}
+  else{addFood({name,category:cat,price,rating,reviews:0,badge,img,desc});showToast('Added','success');}
+  closeModal('adminFoodModal');switchAdmin('foods');renderCatPills();renderFoodGrid();
+}
+function confirmDeleteFood(id){
+  const f=(DB.get('foods')||[]).find(x=>x.id===id); if(!f||window._cd) return;
+  window._cd=true; showToast(`"${f.name}" deleted`,'info');
+  deleteFood(id);switchAdmin('foods');renderCatPills();renderFoodGrid();
+  setTimeout(()=>window._cd=false,500);
+}
+
+// ============================================================
+// NAVIGATION & UTILS
+// ============================================================
+function navigate(page){
+  if(page==='admin'&&!isAdmin()){openModal('deniedModal');return;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.toggle('active',l.dataset.page===page));
+  if(page==='home'){renderCatPills();renderFoodGrid();}
+  if(page==='orders') renderOrders();
+  if(page==='admin') switchAdmin(adminTab);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+function showToast(msg,type='info'){
+  const icons={success:'fa-check-circle',error:'fa-exclamation-circle',info:'fa-info-circle'};
+  const t=document.createElement('div');t.className=`toast toast-${type}`;
+  t.innerHTML=`<i class="fas ${icons[type]}"></i> ${msg}`;
+  document.getElementById('toastContainer').appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+window.addEventListener('scroll',()=>document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>20));
+function toggleMobileNav(){
+  const l=document.getElementById('navLinks');
+  if(l.style.display==='flex'){l.style.display='none';}
+  else{l.style.display='flex';l.style.position='absolute';l.style.top='68px';l.style.left='0';l.style.right='0';l.style.background='var(--bg)';l.style.padding='12px';l.style.flexDirection='column';l.style.borderBottom='1px solid var(--border)';l.style.boxShadow='var(--shadow)';}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));if(document.getElementById('cartSidebar').classList.contains('open'))toggleCart();}
+});
+
+// ============================================================
+// INIT
+// ============================================================
+seedData();
+updateAuthUI();
+updateCartBadge();
+renderCatPills();
+renderFoodGrid();
+</script>
+</body>
+</html>
