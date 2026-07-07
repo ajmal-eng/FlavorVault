@@ -40,6 +40,30 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/deliveryboys", deliveryBoyRoutes);
 
+app.get("/debug-files", (req, res) => {
+  const fs = require("fs");
+  try {
+    const repoRoot = path.resolve(__dirname, "..");
+    const backendFiles = fs.readdirSync(__dirname);
+    const rootFiles = fs.readdirSync(repoRoot);
+    const frontendExists = fs.existsSync(frontendDir);
+    const frontendFiles = frontendExists ? fs.readdirSync(frontendDir) : "FOLDER NOT FOUND";
+    res.json({
+      __dirname,
+      frontendDir,
+      repoRoot,
+      rootFiles,
+      backendFiles,
+      frontendExists,
+      frontendFiles
+    });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
+
+
 app.get("/health", (req, res) => {
   res.json({ success: true, message: "FlavorVault backend is running" });
 });
