@@ -16,7 +16,8 @@
     // backend port 5000. This means it correctly targets 127.0.0.1, a LAN IP
     // (e.g. when opened from a phone), or a real domain - without ever
     // falling back to a dev-server port like Live Server's 5500.
-    const defaultApiBase = `${window.location.protocol}//${window.location.hostname}:5000`;
+    const __isLocalHost = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const defaultApiBase = __isLocalHost ? `${window.location.protocol}//${window.location.hostname}:5000` : `${window.location.protocol}//${window.location.hostname}`;
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
     const originalFetch = window.fetch.bind(window);

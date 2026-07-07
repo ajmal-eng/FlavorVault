@@ -10,7 +10,8 @@
     const rawHost = window.location.hostname;
     const host = rawHost || "localhost";
     const protocol = window.location.protocol.startsWith("http") ? window.location.protocol : "http:";
-    const defaultApiBase = `${protocol}//${host}:5000`;
+    const isLocalHost = (host === "localhost" || host === "127.0.0.1");
+    const defaultApiBase = isLocalHost ? `${protocol}//${host}:5000` : `${protocol}//${host}`;
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
     const originalFetch = window.fetch.bind(window);
