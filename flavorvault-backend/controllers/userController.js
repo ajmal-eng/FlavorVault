@@ -14,18 +14,14 @@ function generateReferralCode(name){
 // "App Password", not your normal Gmail password - generate one at
 // https://myaccount.google.com/apppasswords) for this to actually send mail.
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  family: 4,  // forces IPv4, fixes Render's ENETUNREACH error
-  // Some networks (school/college-managed devices, certain antivirus
-  // software) intercept HTTPS/SMTP connections and re-sign them with
-  // their own certificate, which Node doesn't trust by default and causes
-  // "self-signed certificate in certificate chain" errors. This disables
-  // certificate verification for this connection only, which is fine for
-  // local development but should NOT be used in a real production deployment.
+  family: 4, // forces IPv4, fixes Render's ENETUNREACH error
   tls: {
     rejectUnauthorized: false
   }
