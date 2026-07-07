@@ -19,8 +19,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  family: 4  // forces IPv4, fixes Render's ENETUNREACH error
-});
+  family: 4,  // forces IPv4, fixes Render's ENETUNREACH error
   // Some networks (school/college-managed devices, certain antivirus
   // software) intercept HTTPS/SMTP connections and re-sign them with
   // their own certificate, which Node doesn't trust by default and causes
