@@ -1495,6 +1495,17 @@ function updateTrendingHero(foods){
     if (imgEl && trendingFood.img) imgEl.src = trendingFood.img;
   }
 }
+function fixImgUrl(url){
+  if(!url) return '';
+  if(url.includes('127.0.0.1:5000') || url.includes('localhost:5000')){
+    return url.replace(/^https?:\/\/(127\.0\.0\.1|localhost):5000/, window.FLAVORVAULT_API_BASE);
+  }
+  if(url.startsWith('/uploads')){
+    return `${window.FLAVORVAULT_API_BASE}${url}`;
+  }
+  return url;
+}
+
 function renderFoodGrid(){
   const foods=DB.get('foods')||[];
   const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
@@ -1507,7 +1518,7 @@ function renderFoodGrid(){
     const b=f.badge?`<span class="food-card-badge badge-${f.badge}">${f.badge}</span>`:'';
     const editBtn=isAdmin()?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();window.location.href='admin.html'" title="Edit in Admin Panel" style="flex:1"><i class="fas fa-edit"></i> Edit</button>`:'';
     return `<div class="food-card fade-in stagger-${(i%4)+1}" onclick="openFoodDetail('${f.id}')">
-      <div class="food-card-img-wrap"><img class="food-card-img" src="${f.img}" alt="${f.name}" loading="lazy">${b}</div>
+     <div class="food-card-img-wrap"><img class="food-card-img" src="${fixImgUrl(f.img)}" alt="${f.name}" loading="lazy">${b}</div>
       <div class="food-card-body">
         <div class="food-card-cat">${f.category}</div>
         <div class="food-card-name">${f.name}</div>
@@ -1690,6 +1701,8 @@ function openEditSection(type, itemId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   document.getElementById('editName')?.focus();
 }
+
+
 
 function closeEditSection() {
     loadFoods();
