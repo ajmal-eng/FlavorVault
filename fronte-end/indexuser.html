@@ -1595,7 +1595,7 @@ function goToAdmin(){
 function goToDelivery(){
   const user=getCurrentUser();
   if(user && (user.role==='delivery' || user.role==='admin')){
-    window.location.href='delivery-auth.html';
+    window.location.href='deliveryauth.html';
   } else {
     showToast('Delivery access restricted. Please sign in with a delivery account.', 'error');
   }

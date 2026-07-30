@@ -1,0 +1,20 @@
+[33mcommit 8bca0ddff55e70aaf26b6e3aec991c258000847b[m
+Author: Ajmal <ajmalmk207@gmnail.com>
+Date:   Tue Jul 7 19:59:36 2026 +0530
+
+    Fix syntax error from merging family:4 and tls config
+
+[1mdiff --git a/flavorvault-backend/controllers/userController.js b/flavorvault-backend/controllers/userController.js[m
+[1mindex 6a2d325..2aaa382 100644[m
+[1m--- a/flavorvault-backend/controllers/userController.js[m
+[1m+++ b/flavorvault-backend/controllers/userController.js[m
+[36m@@ -19,8 +19,7 @@[m [mconst transporter = nodemailer.createTransport({[m
+     user: process.env.EMAIL_USER,[m
+     pass: process.env.EMAIL_PASS[m
+   },[m
+[31m-  family: 4  // forces IPv4, fixes Render's ENETUNREACH error[m
+[31m-});[m
+[32m+[m[32m  family: 4,  // forces IPv4, fixes Render's ENETUNREACH error[m
+   // Some networks (school/college-managed devices, certain antivirus[m
+   // software) intercept HTTPS/SMTP connections and re-sign them with[m
+   // their own certificate, which Node doesn't trust by default and causes[m

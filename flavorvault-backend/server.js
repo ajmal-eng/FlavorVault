@@ -30,7 +30,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-const frontendDir = path.resolve(__dirname, "..", "fronte -end");
+const frontendDir = path.resolve(__dirname, "..", "fronte-end");
 app.use(express.static(frontendDir));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -49,7 +49,7 @@ app.get("/admin", (req, res) => {
 });
 
 app.get("/delivery-auth", (req, res) => {
-  res.sendFile(path.join(frontendDir, "delivery-auth.html"));
+  res.sendFile(path.join(frontendDir, "deliveryauth.html"));
 });
 
 app.get("/chef", (req, res) => {
