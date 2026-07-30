@@ -14,14 +14,17 @@ function generateReferralCode(name){
 // "App Password", not your normal Gmail password - generate one at
 // https://myaccount.google.com/apppasswords) for this to actually send mail.
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // STARTTLS
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  family: 4, // forces IPv4, fixes Render's ENETUNREACH error
+  // Some networks (school/college-managed devices, certain antivirus
+  // software) intercept HTTPS/SMTP connections and re-sign them with
+  // their own certificate, which Node doesn't trust by default and causes
+  // "self-signed certificate in certificate chain" errors. This disables
+  // certificate verification for this connection only, which is fine for
+  // local development but should NOT be used in a real production deployment.
   tls: {
     rejectUnauthorized: false
   }
@@ -117,20 +120,29 @@ const registerUser = async (req, res) => {
   try {
     console.log("BODY:", req.body);
 
-    const { name, email, password, phone, address } = req.body;
+    const { name, username, email, password, phone, address } = req.body;
 
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
       return res.status(400).json({
         message: "User already exists"
       });
+    }
+
+    if (username) {
+      const usernameExists = await User.findOne({ username });
+      if (usernameExists) {
+        return res.status(400).json({
+          message: "That username is already taken"
+        });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
+      username: username || undefined,
       email,
       password: hashedPassword,
       phone,
@@ -155,13 +167,24 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, identifier, password } = req.body;
+    // Accept whichever field the frontend sends - email, username, or a
+    // generic "identifier" that could be either.
+    const loginValue = identifier || email || username;
 
-    const user = await User.findOne({ email });
+    if (!loginValue) {
+      return res.status(400).json({
+        message: "Please enter your email or username"
+      });
+    }
+
+    const user = await User.findOne({
+      $or: [{ email: loginValue }, { username: loginValue }]
+    });
 
     if (!user) {
       return res.status(400).json({
-        message: "Invalid email or password"
+        message: "Invalid email/username or password"
       });
     }
 
@@ -172,7 +195,7 @@ const loginUser = async (req, res) => {
 
     if (!isMatch) {
       return res.status(400).json({
-        message: "Invalid email or password"
+        message: "Invalid email/username or password"
       });
     }
 
@@ -181,6 +204,7 @@ const loginUser = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        username: user.username || "",
         email: user.email,
         phone: user.phone,
         address: user.address,
@@ -201,7 +225,7 @@ const REWARD_CATALOG = [
   {
     id: "r5",
     name: "$5 Coupon",
-    points: 100,
+    points: 5,
     icon: "fa-ticket-alt",
     color: "var(--accent)",
     repeatIntervalDays: 1,
@@ -210,7 +234,7 @@ const REWARD_CATALOG = [
   {
     id: "drink",
     name: "Free Drink",
-    points: 250,
+    points: 12,
     icon: "fa-glass-whiskey",
     color: "var(--green)",
     repeatIntervalDays: 7,
@@ -219,7 +243,7 @@ const REWARD_CATALOG = [
   {
     id: "burger",
     name: "Free Burger",
-    points: 500,
+    points: 25,
     icon: "fa-hamburger",
     color: "#f59e0b",
     repeatIntervalDays: 30,
@@ -228,7 +252,7 @@ const REWARD_CATALOG = [
   {
     id: "vip",
     name: "VIP Membership",
-    points: 1000,
+    points: 50,
     icon: "fa-crown",
     color: "#9333ea",
     repeatIntervalDays: 30,

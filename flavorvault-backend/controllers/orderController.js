@@ -111,7 +111,9 @@ const updateOrderStatus = async (req, res) => {
           user = await User.findOne({ phone: order.phone });
         }
         if (user) {
-          user.points = Math.round((user.points || 0) + (order.totalAmount || 0));
+          // 1 point for every ₹1000 spent (rounded down).
+          const pointsEarned = Math.floor((order.totalAmount || 0) / 1000);
+          user.points = (user.points || 0) + pointsEarned;
           await user.save();
         }
       } catch (e) { console.error("Points award error:", e); }
@@ -265,10 +267,59 @@ const downloadInvoice = async (req, res) => {
   }
 };
 
+// Returns the single oldest order still needing preparation - the chef
+// only ever sees one order at a time, never a full list.
+const getChefQueue = async (req, res) => {
+  try {
+    const order = await Order.findOne({ prepared: false }).sort({ createdAt: 1 });
+    const queueLength = await Order.countDocuments({ prepared: false });
+    res.json({ success: true, order: order || null, queueLength });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const markOrderPrepared = async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { prepared: true },
+      { new: true }
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    req.app.get("io").emit("order-prepared", { orderId: order._id });
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const markPaymentReceived = async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { paymentStatus: "Paid" },
+      { new: true }
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    req.app.get("io").emit("payment-received", { orderId: order._id });
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
   updateOrderStatus,
   assignDeliveryBoy,
-  downloadInvoice
+  downloadInvoice,
+  getChefQueue,
+  markOrderPrepared,
+  markPaymentReceived
 };

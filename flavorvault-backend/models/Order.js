@@ -82,6 +82,15 @@ const orderSchema = new mongoose.Schema({
   subtotal: {
     type: Number,
     default: 0
+  },
+
+  // Kitchen workflow - separate from `status` (which admin/delivery use).
+  // false = still needs to be prepared by the chef; true = chef marked it
+  // done. This never deletes the order, it just removes it from the chef's
+  // queue.
+  prepared: {
+    type: Boolean,
+    default: false
   }
 
 }, {

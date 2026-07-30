@@ -42,6 +42,13 @@ const deliveryBoySchema = new mongoose.Schema({
       type: Number,
       default: 0
     }
+  },
+
+  // UPI ID this delivery boy uses to receive payments via QR code
+  // (e.g. "name@okhdfcbank"). Set by admin when adding/editing.
+  upiId: {
+    type: String,
+    default: ""
   }
 
 }, {

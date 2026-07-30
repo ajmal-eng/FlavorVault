@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const addDeliveryBoy = async (req, res) => {
   try {
-    const { name, email, phone, vehicle, password } = req.body;
+    const { name, email, phone, vehicle, password, upiId } = req.body;
 
     if (!name || !email || !phone) {
       return res.status(400).json({
@@ -27,6 +27,7 @@ const addDeliveryBoy = async (req, res) => {
       email,
       phone,
       vehicle,
+      upiId: upiId || "",
       password: hashedPassword
     });
 
