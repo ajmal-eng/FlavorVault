@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlavorVault Kitchen</title>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script>
+    // Default to the current page's own origin - this is what's correct
+    // once deployed (Render serves frontend + backend from the same
+    // https origin, no separate port). Can still be overridden with
+    // ?api=http://... for local testing against a different backend.
+    const apiParam = new URLSearchParams(window.location.search).get("api");
+    window.FLAVORVAULT_API_BASE = (apiParam || window.location.origin).replace(/\/$/, "");
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --accent: #e8572a;
+      --accent-hover: #d6491f;
+      --green: #2d8a4e;
+      --bg: #faf7f2;
+      --card: #ffffff;
+      --border: #ece4d8;
+      --fg: #2b2420;
+      --fg-muted: #8a7f72;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    header i { color: var(--accent); font-size: 1.6rem; }
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+    }
+    .queue-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-left: 8px;
+    }
+    .order-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      text-align: center;
+    }
+    .order-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+    .order-time {
+      color: var(--fg-muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+    .items-list {
+      text-align: left;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      margin-bottom: 28px;
+    }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 1.05rem;
+    }
+    .item-qty {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 2px 10px;
+      margin-right: 10px;
+      font-size: 0.9rem;
+    }
+    .prepare-btn {
+      width: 100%;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 20px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .prepare-btn:hover { background: #24703e; transform: translateY(-1px); }
+    .prepare-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .empty-state {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 60px 36px;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      color: var(--fg-muted);
+    }
+    .empty-state i { font-size: 2.5rem; color: var(--green); margin-bottom: 16px; }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--fg);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <i class="fas fa-kitchen-set"></i>
+    <h1>Kitchen</h1>
+    <span class="queue-badge" id="queueBadge">0 waiting</span>
+  </header>
+
+  <div id="content">
+    <div class="empty-state">
+      <i class="fas fa-circle-notch fa-spin"></i>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentOrder = null;
+    let marking = false;
+
+    function showToast(msg) {
+      // Pop-up notifications disabled to match the rest of the app.
+      // Errors/success are still logged to the console for debugging.
+      console.log(msg);
+    }
+
+    function timeAgo(dateStr) {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 1) return 'just now';
+      if (mins === 1) return '1 minute ago';
+      if (mins < 60) return `${mins} minutes ago`;
+      const hrs = Math.floor(mins / 60);
+      return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+    }
+
+    function render() {
+      const content = document.getElementById('content');
+
+      if (!currentOrder) {
+        content.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-circle-check"></i>
+            <p>All caught up! No orders waiting to be prepared.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const order = currentOrder;
+      content.innerHTML = `
+        <div class="order-card">
+          <div class="order-number">Order #${String(order._id).slice(-4).toUpperCase()}</div>
+          <div class="order-time">For ${order.customerName || 'Customer'} · Placed ${timeAgo(order.createdAt)}</div>
+          <div class="items-list">
+            ${(order.items || []).map(i => `
+              <div class="item-row">
+                <span><span class="item-qty">${i.quantity}</span>${i.name}</span>
+              </div>
+            `).join('')}
+          </div>
+          <button class="prepare-btn" id="prepareBtn" ${marking ? 'disabled' : ''}>
+            <i class="fas fa-check"></i> ${marking ? 'Marking...' : 'Mark as Prepared'}
+          </button>
+        </div>
+      `;
+
+      document.getElementById('prepareBtn').addEventListener('click', markPrepared);
+    }
+
+    async function loadQueue() {
+      try {
+        const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders/chef-queue`);
+        const data = await res.json();
+        if (data.success) {
+          currentOrder = data.order;
+          document.getElementById('queueBadge').textContent = `${data.queueLength} waiting`;
+          render();
+        }
+      } catch (err) {
+        console.error('LOAD QUEUE ERROR:', err);
+      }
+    }
+
+    async function markPrepared() {
+      if (!currentOrder || marking) return;
+      marking = true;
+      render();
+      try {
+        const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders/${currentOrder._id}/mark-prepared`, {
+          method: 'PUT'
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Order marked as prepared');
+          marking = false;
+          await loadQueue();
+        } else {
+          showToast(data.message || 'Could not update order');
+          marking = false;
+          render();
+        }
+      } catch (err) {
+        console.error('MARK PREPARED ERROR:', err);
+        showToast('Cannot connect to backend');
+        marking = false;
+        render();
+      }
+    }
+
+    loadQueue();
+
+    const socket = io(window.FLAVORVAULT_API_BASE);
+    socket.on('new-order', () => loadQueue());
+    socket.on('order-prepared', () => loadQueue());
+
+    // Fallback polling in case the socket connection drops.
+    setInterval(loadQueue, 15000);
+  </script>
+</body>
+</html>
