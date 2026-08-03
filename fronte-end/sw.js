@@ -8,8 +8,11 @@ const SHELL_FILES = [
   'chef.html',
   'deliveryauth.html',
   'favicon.ico',
-  'icons/icon-192x192.png',
-  'icons/icon-512x512.png'
+  'icons/user/icon-192x192.png',
+  'icons/user/icon-512x512.png',
+  'icons/admin/icon-192x192.png',
+  'icons/chef/icon-192x192.png',
+  'icons/delivery/icon-192x192.png'
 ];
 
 self.addEventListener('install', (event) => {
