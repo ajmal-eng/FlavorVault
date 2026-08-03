@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlavorVault Admin</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest-admin.json">
+  <meta name="theme-color" content="#f97316">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <link rel="icon" type="image/png" href="frontend-images/admin.png">
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
     const rawHost = window.location.hostname;
@@ -22,6 +27,14 @@
         } else if (resource.startsWith("https://localhost:5000")) {
           resource = `${window.FLAVORVAULT_API_BASE}${resource.slice("https://localhost:5000".length)}`;
         }
+      }
+      // Automatically attach the logged-in admin's token to every request
+      // going to our own backend, so protected routes work without having
+      // to touch every individual fetch call.
+      const token = localStorage.getItem("authToken");
+      if (token && typeof resource === "string" && resource.startsWith(window.FLAVORVAULT_API_BASE)) {
+        options = options || {};
+        options.headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
       }
       return originalFetch(resource, options);
     };
@@ -85,7 +98,9 @@ body::after {
 .nav-logo .logo-icon {
   width: 38px; height: 38px; background: var(--accent); border-radius: 10px;
   display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem;
+  overflow: hidden;
 }
+.nav-logo .logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .nav-links { display: flex; gap: 6px; align-items: center; }
 .nav-link {
   padding: 8px 16px; border-radius: var(--radius-sm); text-decoration: none;
@@ -448,7 +463,7 @@ select.form-input { cursor: pointer; }
 .delivery-progress-card { margin-top: 14px; padding: 18px 16px; background: rgba(232,87,42,0.06); border: 1px solid rgba(232,87,42,0.18); border-radius: 16px; }
 .delivery-progress-line { display: flex; align-items: center; gap: 12px; }
 .delivery-progress-track { position: relative; flex: 1; height: 10px; background: rgba(26,18,9,0.1); border-radius: 999px; }
-.delivery-progress-step { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); animation:adminFootstep 1.8s linear infinite; }
+.delivery-progress-step { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); animation:adminFootstep 1.8s ease-in-out infinite; }
 .delivery-progress-step:nth-child(2) { animation-delay: 0.5s; background: var(--green); }
 .delivery-progress-step:nth-child(3) { animation-delay: 1s; background: var(--accent-hover); }
 @keyframes adminFootstep { 0% { left: 0%; } 50% { left: calc(100% - 16px); } 100% { left: 0%; } }
@@ -581,7 +596,6 @@ select.form-input { cursor: pointer; }
 }
 
 </style>
-  <link rel="icon" sizes="32x32" href="Capture-removebg-preview.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -590,7 +604,7 @@ select.form-input { cursor: pointer; }
   <nav class="navbar" id="navbar">
     <div class="nav-inner">
       <a href="indexuser.html" class="nav-logo">
-        <div class="logo-icon"><i class="fas fa-utensils"></i></div>
+        <div class="logo-icon"><img src="icons/icon-192x192.png" alt="FlavorVault"></div>
         FlavorVault Admin
       </a>
       <div class="nav-actions">
@@ -643,8 +657,19 @@ select.form-input { cursor: pointer; }
     // Only the signed-in admin's session lives in localStorage.
     function getCurrentUser(){ try{ return JSON.parse(localStorage.getItem('adminUser')); }catch{ return null; } }
     function setCurrentUser(user){ localStorage.setItem('adminUser', JSON.stringify(user)); renderApp(); }
-    function logout(){ localStorage.removeItem('adminUser'); renderApp(); showToast('Signed out','info'); }
+    function logout(){ localStorage.removeItem('adminUser'); localStorage.removeItem('authToken'); renderApp(); showToast('Signed out','info'); }
     function isAdmin(){ const u=getCurrentUser(); return u && u.role==='admin'; }
+
+    // Wraps fetch() and automatically attaches the saved admin token as an
+    // Authorization: Bearer header. Use this for any endpoint protected by
+    // protect()/requireRole() on the backend - plain fetch() will get a 401
+    // since the server has no other way to know who's calling.
+    function authFetch(url, options = {}) {
+      const token = localStorage.getItem('authToken');
+      const headers = { ...(options.headers || {}) };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      return fetch(url, { ...options, headers });
+    }
 
     async function loginAdmin(){
       const email=document.getElementById('adminEmail').value.trim();
@@ -665,6 +690,7 @@ select.form-input { cursor: pointer; }
           err.style.display='block';
           return;
         }
+        localStorage.setItem('authToken', data.token);
         setCurrentUser(data.user);
         showToast('Welcome, Admin','success');
         await renderApp();
@@ -683,7 +709,7 @@ select.form-input { cursor: pointer; }
 
     async function loadCoupons() {
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/coupons`);
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/coupons`);
         const data = await response.json();
 
         coupons = data.coupons || [];
@@ -723,7 +749,7 @@ select.form-input { cursor: pointer; }
       }
 
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/add`, {
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, discount, active })
@@ -763,7 +789,7 @@ select.form-input { cursor: pointer; }
       }
 
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/${id}`, {
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -792,7 +818,7 @@ select.form-input { cursor: pointer; }
       if (!confirm("Delete this coupon?")) return;
 
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/${id}`, {
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/coupons/${id}`, {
           method: "DELETE"
         });
 
@@ -878,7 +904,7 @@ select.form-input { cursor: pointer; }
         try {
           const formData = new FormData();
           formData.append("image", file);
-          const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/foods/upload-image`, {
+          const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/foods/upload-image`, {
             method: "POST",
             body: formData
           });
@@ -919,7 +945,7 @@ select.form-input { cursor: pointer; }
       }
 
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/foods/${editingFoodId}`, {
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/foods/${editingFoodId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -986,7 +1012,7 @@ select.form-input { cursor: pointer; }
 
     async function loadOrders() {
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
         const data = await response.json();
 
         if (!data.success) return;
@@ -1039,6 +1065,19 @@ select.form-input { cursor: pointer; }
                       <span class="dot ${order.status === 'delivered' ? 'active' : ''}"></span>
                     </div>
                     <div style="margin-top:10px;color:var(--fg-muted);font-size:0.95rem;">Status: ${order.status}</div>
+                    ${order.status === 'out for delivery' ? `
+                    <div class="delivery-progress-card">
+                      <div class="delivery-progress-line">
+                        <i class="fas fa-shop" style="color:var(--accent)"></i>
+                        <div class="delivery-progress-track">
+                          <span class="delivery-progress-step"></span>
+                          <span class="delivery-progress-step"></span>
+                          <span class="delivery-progress-step"></span>
+                        </div>
+                        <i class="fas fa-house" style="color:var(--green)"></i>
+                      </div>
+                      <div style="margin-top:8px;font-size:0.85rem;color:var(--accent);font-weight:600;"><i class="fas fa-truck"></i> Out for delivery — on the way</div>
+                    </div>` : ''}
                   </div>
                   <div class="food-list">
                     ${(order.items || []).map(i => `<div>${i.quantity}x ${i.name}</div>`).join("")}
@@ -1059,6 +1098,7 @@ select.form-input { cursor: pointer; }
                           <div class="order-actions">
                     <button class="btn-green" onclick="changeStatus('${order._id}','preparing')">Mark Prepared</button>
                     <button class="btn-orange" onclick="changeStatus('${order._id}','delivered')">Mark Delivered</button>
+                    <button class="btn btn-outline btn-sm" onclick="printInvoice('${order._id}')"><i class="fas fa-print"></i> Print Invoice</button>
                   </div>
                   <div style="margin-top:16px;display:grid;gap:10px;">
                     <select id="delivery-${order._id}" class="form-input" style="padding:10px;">
@@ -1073,6 +1113,13 @@ select.form-input { cursor: pointer; }
               </div>
             </div>
           `).join("");
+    }
+
+    function printInvoice(orderId) {
+      window.open(
+        `${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/invoice?print=true`,
+        "_blank"
+      );
     }
 
     function filterOrders() {
@@ -1116,7 +1163,7 @@ select.form-input { cursor: pointer; }
 
       try {
 
-        const response = await fetch(
+        const response = await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/status`,
           {
             method: "PUT",
@@ -1155,7 +1202,7 @@ select.form-input { cursor: pointer; }
 
         const deliveryBoyName = select.options[select.selectedIndex].text;
 
-        const response = await fetch(
+        const response = await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/assign`,
           {
             method: "PUT",
@@ -1185,7 +1232,7 @@ select.form-input { cursor: pointer; }
 
     async function toggleFoodAvailability(id, currentlyAvailable) {
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/foods/${id}`,
           {
             method: "PUT",
@@ -1212,7 +1259,7 @@ select.form-input { cursor: pointer; }
       if (!ok) return;
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/foods/${id}`,
           {
             method: "DELETE"
@@ -1239,7 +1286,7 @@ select.form-input { cursor: pointer; }
 
     async function loadDeliveryBoys(){
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys`);
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys`);
         const data = await response.json();
 
         if(!data.success) return;
@@ -1276,7 +1323,7 @@ select.form-input { cursor: pointer; }
       }
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/deliveryboys/add`,
           {
             method: "POST",
@@ -1311,7 +1358,7 @@ select.form-input { cursor: pointer; }
 
     async function deleteDeliveryBoy(id){
       try {
-        await fetch(
+        await authFetch(
           `${window.FLAVORVAULT_API_BASE}/api/deliveryboys/${id}`,
           {
             method: "DELETE"
@@ -1392,7 +1439,7 @@ select.form-input { cursor: pointer; }
       if(!phone){ errEl.textContent = '❌ Phone is required'; errEl.style.display = 'block'; return; }
 
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys/${currentEditingDelivery._id || currentEditingDelivery.id}`, {
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys/${currentEditingDelivery._id || currentEditingDelivery.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, phone, vehicle, upiId })
@@ -1418,7 +1465,7 @@ select.form-input { cursor: pointer; }
       const card = document.getElementById("chefQueueCard");
       if (!card) return;
       try {
-        const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders/chef-queue`);
+        const res = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/orders/chef-queue`);
         const data = await res.json();
         if (!data.success) return;
 
@@ -1449,10 +1496,10 @@ select.form-input { cursor: pointer; }
         const foodsRes = await fetch(`${window.FLAVORVAULT_API_BASE}/api/foods`);
         const foodsData = await foodsRes.json();
 
-        const ordersRes = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
+        const ordersRes = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
         const ordersData = await ordersRes.json();
 
-        const deliveryRes = await fetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys`);
+        const deliveryRes = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/deliveryboys`);
         const deliveryData = await deliveryRes.json();
 
         const foods = foodsData.foods || [];
@@ -1493,7 +1540,7 @@ select.form-input { cursor: pointer; }
 
     async function loadSalesChart() {
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
         const data = await response.json();
         const orders = data.orders || [];
         const revenueMap = {};
@@ -1537,7 +1584,7 @@ select.form-input { cursor: pointer; }
 
     async function loadTopFoods() {
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
+        const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/orders`);
         const data = await response.json();
         const sales = {};
 
@@ -1862,7 +1909,7 @@ select.form-input { cursor: pointer; }
           try {
             const formData = new FormData();
             formData.append("image", file);
-            const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/foods/upload-image`, {
+            const response = await authFetch(`${window.FLAVORVAULT_API_BASE}/api/foods/upload-image`, {
               method: "POST",
               body: formData
             });
@@ -1900,7 +1947,7 @@ select.form-input { cursor: pointer; }
           };
 
           try {
-            const response = await fetch(
+            const response = await authFetch(
               `${window.FLAVORVAULT_API_BASE}/api/foods/add`,
               {
                 method: "POST",
@@ -1992,5 +2039,6 @@ select.form-input { cursor: pointer; }
       }
     });
   </script>
+  <script src="pwa-install.js"></script>
 </body>
 </html>

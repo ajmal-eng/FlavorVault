@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlavorVault Delivery Login</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest-delivery.json">
+  <meta name="theme-color" content="#f97316">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <link rel="icon" type="image/png" href="frontend-images/delivery.png">
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
     // Always default to the backend on port 5000. Do NOT fall back to
@@ -25,12 +30,16 @@
       if (typeof resource === "string" && resource.startsWith("http://localhost:5000")) {
         resource = `${window.FLAVORVAULT_API_BASE}${resource.slice("http://localhost:5000".length)}`;
       }
+      const token = localStorage.getItem("deliveryAuthToken");
+      if (token && typeof resource === "string" && resource.startsWith(window.FLAVORVAULT_API_BASE)) {
+        options = options || {};
+        options.headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+      }
       return originalFetch(resource, options);
     };
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <link rel="icon" sizes="32x32" href="Capture-removebg-preview.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -50,7 +59,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(250,246,241,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); transition: var(--transition); }
 .nav-inner { max-width: 1320px; margin: 0 auto; padding: 0 24px; height: 68px; display: flex; align-items: center; justify-content: space-between; }
 .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 900; color: var(--fg); text-decoration: none; display: flex; align-items: center; gap: 10px; }
-.nav-logo .logo-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; }
+.nav-logo .logo-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; overflow: hidden; }
+.nav-logo .logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .nav-actions { display: flex; gap: 8px; align-items: center; }
 .btn { padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: var(--transition); border: none; display: inline-flex; align-items: center; gap: 8px; font-family: 'DM Sans', sans-serif; }
 .btn-primary { background: var(--accent); color: #fff; }
@@ -96,7 +106,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .route-track { position: relative; height: 72px; padding: 12px; background: rgba(255,255,255,0.95); border-radius: 18px; border: 1px solid rgba(26,18,9,0.08); display: grid; grid-template-columns: minmax(90px,1fr) 48px minmax(90px,1fr); align-items: center; gap: 12px; }
 .route-track.delivered .route-progress { background: rgba(45,138,78,0.45); }
 .route-progress { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); height: 6px; background: rgba(26,18,9,0.12); border-radius: 999px; }
-.route-truck { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; animation: truckRide 3s ease-in-out infinite; }
+.route-truck { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; transition: left 0.6s ease; }
+.route-truck.driving { animation: truckRide 3s ease-in-out infinite; }
 .route-truck.delivered { left: calc(100% - 54px); animation: none; background: var(--green); }
 .route-stop { position: relative; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--fg-muted); }
 .route-stop span { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; }
@@ -119,7 +130,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
   <nav class="navbar" id="navbar">
     <div class="nav-inner">
       <a href="indexuser.html" class="nav-logo">
-        <div class="logo-icon"><i class="fas fa-utensils"></i></div>
+        <div class="logo-icon"><img src="icons/icon-192x192.png" alt="FlavorVault"></div>
         FlavorVault Delivery
       </a>
       <div class="nav-actions">
@@ -149,6 +160,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         window.deliveryWatchId = undefined;
       }
       localStorage.removeItem('deliveryBoy');
+      localStorage.removeItem('deliveryAuthToken');
       if(window.deliveryMap){ window.deliveryMap.remove(); window.deliveryMap = null; window.deliveryMarker = null; }
       renderApp();
       showToast('Signed out','info');
@@ -172,6 +184,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           err.style.display='block';
           return;
         }
+        localStorage.setItem('deliveryAuthToken', data.token);
         setCurrentDelivery(data.deliveryBoy);
         showToast(`Welcome, ${data.deliveryBoy.name}`,'success');
       } catch(error) {
@@ -251,7 +264,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 
     async function setOrderStatus(orderId, status){
       try {
-        const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/status`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status })
         });
@@ -291,7 +304,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       if(!orders.length) return '<p style="color:var(--fg-muted)">No orders assigned yet.</p>';
       return orders.map(o => {
         const deliveredClass = o.status === 'delivered' ? ' delivered' : '';
-        const routeLabel = o.status === 'delivered' ? 'Delivery complete' : 'Live delivery route';
+        const drivingClass = o.status === 'out for delivery' ? ' driving' : '';
+        const routeLabel = o.status === 'delivered' ? 'Delivery complete' : o.status === 'out for delivery' ? 'On the way' : 'Live delivery route';
         const routeStatus = o.status === 'delivered' ? 'Delivered successfully' : `Status: ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}`;
         return `<div class="order-card fade-in" style="margin-bottom:12px;">
           <div class="order-id-col">
@@ -307,7 +321,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
               <div class="route-label">${routeLabel}</div>
               <div class="route-track${deliveredClass}">
                 <div class="route-progress"></div>
-                <div class="route-truck${deliveredClass}"><i class="fas fa-truck"></i></div>
+                <div class="route-truck${deliveredClass}${drivingClass}"><i class="fas fa-truck"></i></div>
                 <div class="route-stop start"><span></span>Kitchen</div>
                 <div class="route-stop end"><span></span>Customer</div>
               </div>
@@ -532,6 +546,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
     window.addEventListener('storage',(event)=>{ if(event.key==='deliveryBoy') renderApp(); });
     window.addEventListener('load', async ()=>{ await renderApp(); });
   </script>
+  <script src="pwa-install.js"></script>
 </body>
 </html>
 
