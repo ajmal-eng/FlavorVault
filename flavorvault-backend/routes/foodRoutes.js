@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const path = require("path");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 const {
   addFood,
@@ -10,15 +11,24 @@ const {
   updateFood
 } = require("../controllers/foodController");
 
+// Cloudinary config (reads credentials from environment variables — never
+// hardcode these). Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and
+// CLOUDINARY_API_SECRET locally in .env and in Render's Environment tab.
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 // Storage for food images uploaded from the admin panel (device upload).
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "..", "uploads"));
+// Files now go straight to Cloudinary instead of Render's local disk, so
+// they survive restarts/redeploys.
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "flavorvault-uploads",
+    allowed_formats: ["jpg", "jpeg", "png", "jfif", "webp"],
   },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || ".jpg";
-    cb(null, `food-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-  }
 });
 
 const upload = multer({
@@ -33,9 +43,9 @@ const upload = multer({
   }
 });
 
-// Upload a food image from the admin's device. Returns a URL (served via
-// express.static on /uploads) that can be saved as the food's `image` field,
-// same as a pasted image URL would be.
+// Upload a food image from the admin's device. Returns the permanent
+// Cloudinary URL that can be saved as the food's `image` field, same as a
+// pasted image URL would be.
 router.post("/upload-image", (req, res) => {
   upload.single("image")(req, res, (err) => {
     if (err) {
@@ -44,7 +54,7 @@ router.post("/upload-image", (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No image file uploaded" });
     }
-    res.json({ success: true, url: `/uploads/${req.file.filename}` });
+    res.json({ success: true, url: req.file.path });
   });
 });
 
