@@ -22,6 +22,9 @@
     // backend port 5000. This means it correctly targets 127.0.0.1, a LAN IP
     // (e.g. when opened from a phone), or a real domain - without ever
     // falling back to a dev-server port like Live Server's 5500.
+    // Deployed backend (Render). Used whenever this page is NOT being served
+    // by that same backend (e.g. hosted separately on flavorvault.wuaze.com).
+    window.__FLAVORVAULT_API_URL__ = window.__FLAVORVAULT_API_URL__ || "https://flavorvault-iy25.onrender.com";
     const defaultApiBase = `${window.location.protocol}//${window.location.hostname}:5000`;
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
@@ -361,12 +364,19 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       window.deliveryMarker = L.marker([lat, lng]).addTo(window.deliveryMap).bindPopup('You are here').openPopup();
     }
 
-    const customerIcon = L.divIcon({
-      className: 'customer-map-pin',
-      html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-      iconSize: [20, 20],
-      iconAnchor: [10, 20]
-    });
+    // Built lazily (not at top level) - if the Leaflet CDN script is slow or
+    // blocked (common on mobile data), `L` is undefined. Building this icon
+    // at the top level would throw immediately and stop the rest of the
+    // script - including the sign-in form and everything below it - from
+    // ever running, leaving a blank page.
+    function getCustomerIcon(){
+      return L.divIcon({
+        className: 'customer-map-pin',
+        html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 20]
+      });
+    }
 
     // Looks up the customer's typed address on the map (free OpenStreetMap
     // geocoding, no API key needed) and shows it as a pin alongside the
@@ -395,7 +405,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         if(window.customerMarker){
           window.customerMarker.setLatLng([lat, lng]);
         } else {
-          window.customerMarker = L.marker([lat, lng], { icon: customerIcon }).addTo(window.deliveryMap).bindPopup('Customer location');
+          window.customerMarker = L.marker([lat, lng], { icon: getCustomerIcon() }).addTo(window.deliveryMap).bindPopup('Customer location');
         }
         window.customerMarker.openPopup();
 
@@ -532,7 +542,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       document.getElementById('orderDetailModal').classList.remove('open');
     }
 
-    const socket = io(window.FLAVORVAULT_API_BASE);
+    // Guarded: if the socket.io CDN script is slow/blocked (common on mobile
+    // data), `io` is undefined. Without this guard that throws and stops the
+    // whole script from running, leaving a blank page.
+    const socket = (typeof io !== 'undefined')
+      ? io(window.FLAVORVAULT_API_BASE)
+      : (console.warn('socket.io failed to load - live updates disabled, app still works'), { on(){}, off(){}, emit(){} });
     socket.on("delivery-assigned", data => {
       const currentBoy = getCurrentDelivery();
       if (!currentBoy || data.deliveryBoyId !== currentBoy._id) return;

@@ -1,7 +1,9 @@
 // FlavorVault service worker
-// Minimal cache-first shell so the browser recognizes each page as
-// installable and it can still open (last known state) when offline.
-const CACHE_NAME = 'flavorvault-shell-v1';
+// Network-first for the HTML pages themselves, so a fresh deploy always
+// shows up immediately when the phone has a connection. Cache is only used
+// as a fallback when truly offline. Icons stay cache-first since they never
+// change and there's no benefit re-fetching them every time.
+const CACHE_NAME = 'flavorvault-shell-v2';
 const SHELL_FILES = [
   'indexuser.html',
   'admin.html',
@@ -14,6 +16,7 @@ const SHELL_FILES = [
   'icons/chef/icon-192x192.png',
   'icons/delivery/icon-192x192.png'
 ];
+const HTML_FILES = ['indexuser.html', 'admin.html', 'chef.html', 'deliveryauth.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -35,7 +38,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first for API/socket calls, cache-first for the app shell itself.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -45,6 +47,27 @@ self.addEventListener('fetch', (event) => {
   }
   if (event.request.method !== 'GET') return;
 
+  const isHtmlPage = event.request.mode === 'navigate' ||
+    HTML_FILES.some((f) => url.pathname.endsWith(f));
+
+  if (isHtmlPage) {
+    // Network-first: always try to get the latest version. Only fall back
+    // to the cached copy if there's no connection at all.
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else (icons, static assets).
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)

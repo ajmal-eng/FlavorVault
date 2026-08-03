@@ -16,7 +16,9 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
-    // Always default to the backend on port 5000.
+    // Deployed backend (Render). Used whenever this page is NOT being served
+    // by that same backend (e.g. hosted separately on flavorvault.wuaze.com).
+    window.__FLAVORVAULT_API_URL__ = window.__FLAVORVAULT_API_URL__ || "https://flavorvault-iy25.onrender.com";
     // If loaded from file:// or a non-http host, use localhost.
     const rawHost = window.location.hostname;
     const host = rawHost || "localhost";
@@ -2088,7 +2090,12 @@ document.addEventListener('keydown',e=>{
 // ============================================================
 // INIT
 // ============================================================
-const socket = io(window.FLAVORVAULT_API_BASE);
+// Guarded: if the socket.io CDN script is slow/blocked (common on mobile
+// data), `io` is undefined. Without this guard that throws and stops the
+// whole script from running, leaving a blank page.
+const socket = (typeof io !== 'undefined')
+  ? io(window.FLAVORVAULT_API_BASE)
+  : (console.warn('socket.io failed to load - live updates disabled, app still works'), { on(){}, off(){}, emit(){} });
 
 socket.on("order-status-updated", data => {
   showToast(`Order ${data.status}`, "success");

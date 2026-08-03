@@ -18,6 +18,9 @@
     // Server extension on another port, or served by the backend itself.
     // Can still be overridden with ?api=http://... for other setups.
     const apiParam = new URLSearchParams(window.location.search).get("api");
+    // Deployed backend (Render). Used whenever this page is NOT being served
+    // by that same backend (e.g. hosted separately on flavorvault.wuaze.com).
+    window.__FLAVORVAULT_API_URL__ = window.__FLAVORVAULT_API_URL__ || "https://flavorvault-iy25.onrender.com";
     const rawHost = window.location.hostname;
     const host = rawHost || "localhost";
     const protocol = window.location.protocol.startsWith("http") ? window.location.protocol : "http:";
@@ -547,7 +550,12 @@
       loadQueue();
     }
 
-    const socket = io(window.FLAVORVAULT_API_BASE);
+    // Guarded: if the socket.io CDN script is slow/blocked (common on mobile
+    // data), `io` is undefined. Without this guard that throws and stops the
+    // whole script from running, leaving a blank page.
+    const socket = (typeof io !== 'undefined')
+      ? io(window.FLAVORVAULT_API_BASE)
+      : (console.warn('socket.io failed to load - live updates disabled, app still works'), { on(){}, off(){}, emit(){} });
     socket.on('new-order', () => { if (localStorage.getItem('chefAuthToken')) loadQueue(); });
     socket.on('order-prepared', () => { if (localStorage.getItem('chefAuthToken')) loadQueue(); });
 
