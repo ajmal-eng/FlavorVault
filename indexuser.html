@@ -21,6 +21,23 @@
     const defaultApiBase = "https://flavorvault-iy25.onrender.com";
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
+    // Resolve backend upload paths correctly when the storefront is hosted
+    // on a different origin, and keep broken/empty images from collapsing.
+    window.FLAVORVAULT_IMAGE_FALLBACK =
+      "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'>" +
+        "<rect width='800' height='500' fill='#f0e8dd'/>" +
+        "<text x='400' y='255' text-anchor='middle' fill='#7a6e5d' " +
+        "font-family='Arial,sans-serif' font-size='30'>FlavorVault</text></svg>"
+      );
+    window.normalizeFlavorImage = function(value) {
+      const src = String(value || "").trim();
+      if (!src) return window.FLAVORVAULT_IMAGE_FALLBACK;
+      if (src.startsWith("data:") || src.startsWith("blob:") ||
+          /^https?:\/\//i.test(src)) return src;
+      if (src.startsWith("//")) return `${window.location.protocol}${src}`;
+      return `${window.FLAVORVAULT_API_BASE}/${src.replace(/^\/+/, "")}`;
+    };
     const originalFetch = window.fetch.bind(window);
     window.fetch = function(resource, options) {
       if (typeof resource === "string" && resource.startsWith("http://localhost:5000")) {
@@ -185,6 +202,7 @@ body::after {
 }
 .food-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 .food-card-img { width: 100%; height: 200px; object-fit: cover; transition: transform 0.5s ease; }
+.food-card-img, .cart-item-img { background: var(--bg-deep); }
 .food-card:hover .food-card-img { transform: scale(1.06); }
 .food-card-img-wrap { overflow: hidden; position: relative; }
 .food-card-badge {
@@ -203,6 +221,14 @@ body::after {
 .food-card-rating { display: flex; align-items: center; gap: 4px; font-size: 0.82rem; color: var(--fg-muted); }
 .food-card-rating i { color: #f59e0b; font-size: 0.75rem; }
 .food-card-actions { display: flex; gap: 8px; margin-top: 14px; }
+.pwa-install-fab {
+  display: none; position: fixed; right: 18px; bottom: 18px; z-index: 1900;
+  align-items: center; gap: 8px; padding: 12px 16px; border: 0;
+  border-radius: 999px; background: var(--accent); color: #fff;
+  font: 600 0.85rem 'DM Sans', sans-serif; box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+.pwa-install-fab:hover { background: var(--accent-hover); transform: translateY(-2px); }
 
 /* Skeleton loading cards - shown while food data loads, so the page
    feels responsive immediately instead of sitting blank. */
@@ -423,6 +449,15 @@ select.form-input { cursor: pointer; }
   .hero-img { height: 300px; }
   .hero-text h1 { font-size: 2.6rem; }
   .nav-links { display: none; }
+  .nav-links.mobile-open {
+    display: flex; position: absolute; top: 68px; left: 0; right: 0;
+    padding: 12px; background: var(--bg); flex-direction: column;
+    align-items: stretch; border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow); gap: 4px;
+  }
+  .nav-links.mobile-open .nav-link {
+    width: 100%; text-align: left; padding: 12px 14px;
+  }
   .mobile-toggle { display: block; }
   .admin-grid { grid-template-columns: 1fr; }
   .admin-sidebar { position: static; display: flex; gap: 4px; flex-wrap: wrap; padding: 10px; }
@@ -516,6 +551,10 @@ select.form-input { cursor: pointer; }
     </div>
   </div>
 </nav>
+
+<button id="pwaInstallFab" class="pwa-install-fab" type="button" onclick="installPwa()">
+  <i class="fas fa-download"></i><span>Install App</span>
+</button>
 
 <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
 <aside class="cart-sidebar" id="cartSidebar">
@@ -621,7 +660,7 @@ select.form-input { cursor: pointer; }
         </div>
       </div>
       <div class="hero-img fade-in stagger-2">
-        <img id="heroTrendingImg" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgG0PCk1lMO-aIG1ZjCiXb6YgHFmo9rNBxXg&s" alt="Delicious food">
+        <img id="heroTrendingImg" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgG0PCk1lMO-aIG1ZjCiXb6YgHFmo9rNBxXg&s" alt="Delicious food" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK">
         <div class="hero-float-card">
           <div class="hero-float-icon"><i class="fas fa-fire"></i></div>
           <div class="hero-float-text">
@@ -1742,7 +1781,7 @@ async function loadFoods() {
       category: food.category,
       price: food.price,
       desc: food.description || "",
-      img: food.image || "",
+      img: normalizeFlavorImage(food.image),
       badge: food.badge || "",
       trending: !!food.trending,
       available: food.available !== false,
@@ -1777,7 +1816,7 @@ function updateTrendingHero(foods){
   const imgEl = document.getElementById('heroTrendingImg');
   if (trendingFood && nameEl) {
     nameEl.textContent = trendingFood.name;
-    if (imgEl && trendingFood.img) imgEl.src = trendingFood.img;
+    if (imgEl) imgEl.src = normalizeFlavorImage(trendingFood.img);
   }
 }
 function renderFoodGrid(){
@@ -1796,7 +1835,7 @@ function renderFoodGrid(){
       ? `<button class="btn btn-outline btn-sm" style="flex:1;opacity:0.6;cursor:not-allowed;" disabled><i class="fas fa-ban"></i> Unavailable</button>`
       : `<button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();addToCart('${f.id}')"><i class="fas fa-plus"></i> Add to Cart</button>`;
     return `<div class="food-card fade-in stagger-${(i%4)+1}" onclick="openFoodDetail('${f.id}')">
-      <div class="food-card-img-wrap" style="position:relative;"><img class="food-card-img" src="${f.img}" alt="${f.name}" loading="lazy">${b}${outOfStockOverlay}</div>
+      <div class="food-card-img-wrap" style="position:relative;"><img class="food-card-img" src="${f.img}" alt="${f.name}" loading="lazy" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK">${b}${outOfStockOverlay}</div>
       <div class="food-card-body">
         <div class="food-card-cat">${f.category}</div>
         <div class="food-card-name">${f.name}</div>
@@ -1814,7 +1853,7 @@ function openFoodDetail(id){
   const f=(DB.get('foods')||[]).find(x=>String(x.id)===key); if(!f) return;
   const b=f.badge?`<span class="food-card-badge badge-${f.badge}" style="position:static;display:inline-block;margin-bottom:12px">${f.badge}</span>`:'';
   document.getElementById('foodModalContent').innerHTML=`
-    <img src="${f.img}" alt="${f.name}" style="width:100%;height:220px;object-fit:cover;border-radius:12px;margin-bottom:20px">
+    <img src="${f.img}" alt="${f.name}" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK" style="width:100%;height:220px;object-fit:cover;border-radius:12px;margin-bottom:20px">
     ${b}<div style="font-size:0.78rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${f.category}</div>
     <h3 style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;margin:8px 0">${f.name}</h3>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
@@ -1834,7 +1873,7 @@ function renderCart(){
   body.innerHTML=cart.map(c=>{
     const f=foods.find(x=>String(x.id)===String(c.foodId)); if(!f) return '';
     const sub=f.price*c.qty; total+=sub;
-    return `<div class="cart-item"><img class="cart-item-img" src="${f.img}" alt="${f.name}">
+    return `<div class="cart-item"><img class="cart-item-img" src="${f.img}" alt="${f.name}" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK">
       <div class="cart-item-info"><div class="cart-item-name">${f.name}</div><div class="cart-item-price">$${sub.toFixed(2)}</div>
         <div class="cart-item-qty">
           <button class="qty-btn" onclick="updateCartQty('${f.id}',-1)"><i class="fas fa-minus"></i></button>
@@ -2199,8 +2238,7 @@ function showToast(msg,type='info'){
 window.addEventListener('scroll',()=>document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>20));
 function toggleMobileNav(){
   const l=document.getElementById('navLinks');
-  if(l.style.display==='flex'){l.style.display='none';}
-  else{l.style.display='flex';l.style.position='absolute';l.style.top='68px';l.style.left='0';l.style.right='0';l.style.background='var(--bg)';l.style.padding='12px';l.style.flexDirection='column';l.style.borderBottom='1px solid var(--border)';l.style.boxShadow='var(--shadow)';}
+  l.classList.toggle('mobile-open');
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));if(document.getElementById('cartSidebar').classList.contains('open'))toggleCart();}
@@ -2230,70 +2268,31 @@ window.addEventListener('storage',(event)=>{
 
 // ---- Install as an app (PWA) ----
 let deferredInstallPrompt = null;
-
-// iOS Safari (and other iOS browsers, which all use WebKit) never fires
-// 'beforeinstallprompt' - there is no Chrome-style install API on iOS.
-// The only way to "install" there is the manual Share -> Add to Home
-// Screen flow, so we detect iOS and show the button with instructions
-// instead of leaving it hidden forever.
-function isIos() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
-}
-function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
-}
-
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
   const btn = document.getElementById('installAppBtn');
   if (btn) btn.style.display = 'block';
+  const fab = document.getElementById('pwaInstallFab');
+  if (fab) fab.style.display = 'flex';
 });
-
 async function installPwa() {
-  if (isIos()) {
-    showIosInstallInstructions();
+  if (!deferredInstallPrompt) {
+    alert('To install FlavorVault, open your browser menu and choose "Add to Home screen" or "Install app".');
     return;
   }
-  if (!deferredInstallPrompt) return;
   deferredInstallPrompt.prompt();
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
   document.getElementById('installAppBtn').style.display = 'none';
+  document.getElementById('pwaInstallFab').style.display = 'none';
 }
-
-function showIosInstallInstructions() {
-  let modal = document.getElementById('iosInstallModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'iosInstallModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center;';
-    modal.innerHTML = `
-      <div style="background:var(--card,#fff);color:var(--fg,#1a1209);width:100%;max-width:420px;border-radius:16px 16px 0 0;padding:20px;text-align:left;">
-        <div style="font-weight:700;font-size:1.05rem;margin-bottom:10px;">Install FlavorVault</div>
-        <p style="margin:0 0 8px;font-size:0.9rem;">1. Tap the <i class="fas fa-arrow-up-from-bracket"></i> Share icon in Safari's toolbar.</p>
-        <p style="margin:0 0 8px;font-size:0.9rem;">2. Scroll down and tap <strong>"Add to Home Screen"</strong>.</p>
-        <p style="margin:0 0 16px;font-size:0.9rem;">3. Tap <strong>Add</strong> in the top right corner.</p>
-        <button onclick="document.getElementById('iosInstallModal').remove()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e8572a);color:#fff;font-weight:600;cursor:pointer;">Got it</button>
-      </div>`;
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-    document.body.appendChild(modal);
-  }
-}
-
 window.addEventListener('appinstalled', () => {
   const btn = document.getElementById('installAppBtn');
   if (btn) btn.style.display = 'none';
+  const fab = document.getElementById('pwaInstallFab');
+  if (fab) fab.style.display = 'none';
 });
-
-// Show the "Install App" option on iOS even though 'beforeinstallprompt'
-// never fires there, as long as it isn't already installed.
-if (isIos() && !isStandalone()) {
-  const btn = document.getElementById('installAppBtn');
-  if (btn) btn.style.display = 'block';
-}
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
