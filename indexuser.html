@@ -2230,23 +2230,70 @@ window.addEventListener('storage',(event)=>{
 
 // ---- Install as an app (PWA) ----
 let deferredInstallPrompt = null;
+
+// iOS Safari (and other iOS browsers, which all use WebKit) never fires
+// 'beforeinstallprompt' - there is no Chrome-style install API on iOS.
+// The only way to "install" there is the manual Share -> Add to Home
+// Screen flow, so we detect iOS and show the button with instructions
+// instead of leaving it hidden forever.
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+}
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
   const btn = document.getElementById('installAppBtn');
   if (btn) btn.style.display = 'block';
 });
+
 async function installPwa() {
+  if (isIos()) {
+    showIosInstallInstructions();
+    return;
+  }
   if (!deferredInstallPrompt) return;
   deferredInstallPrompt.prompt();
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
   document.getElementById('installAppBtn').style.display = 'none';
 }
+
+function showIosInstallInstructions() {
+  let modal = document.getElementById('iosInstallModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'iosInstallModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:flex-end;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--card,#fff);color:var(--fg,#1a1209);width:100%;max-width:420px;border-radius:16px 16px 0 0;padding:20px;text-align:left;">
+        <div style="font-weight:700;font-size:1.05rem;margin-bottom:10px;">Install FlavorVault</div>
+        <p style="margin:0 0 8px;font-size:0.9rem;">1. Tap the <i class="fas fa-arrow-up-from-bracket"></i> Share icon in Safari's toolbar.</p>
+        <p style="margin:0 0 8px;font-size:0.9rem;">2. Scroll down and tap <strong>"Add to Home Screen"</strong>.</p>
+        <p style="margin:0 0 16px;font-size:0.9rem;">3. Tap <strong>Add</strong> in the top right corner.</p>
+        <button onclick="document.getElementById('iosInstallModal').remove()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e8572a);color:#fff;font-weight:600;cursor:pointer;">Got it</button>
+      </div>`;
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+}
+
 window.addEventListener('appinstalled', () => {
   const btn = document.getElementById('installAppBtn');
   if (btn) btn.style.display = 'none';
 });
+
+// Show the "Install App" option on iOS even though 'beforeinstallprompt'
+// never fires there, as long as it isn't already installed.
+if (isIos() && !isStandalone()) {
+  const btn = document.getElementById('installAppBtn');
+  if (btn) btn.style.display = 'block';
+}
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
