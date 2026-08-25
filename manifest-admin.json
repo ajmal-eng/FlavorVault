@@ -1,21 +1,15 @@
 {
   "name": "FlavorVault Admin",
   "short_name": "FV Admin",
-  "start_url": "admin.html",
-  "scope": ".",
+  "description": "Manage FlavorVault orders, food, delivery boys, and coupons.",
+  "start_url": "/admin.html",
+  "id": "/admin.html",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#faf6f1",
-  "theme_color": "#f97316",
+  "background_color": "#faf7f2",
+  "theme_color": "#e8572a",
   "icons": [
-    { "src": "icons/admin/icon-72x72.png", "sizes": "72x72", "type": "image/png" },
-    { "src": "icons/admin/icon-96x96.png", "sizes": "96x96", "type": "image/png" },
-    { "src": "icons/admin/icon-128x128.png", "sizes": "128x128", "type": "image/png" },
-    { "src": "icons/admin/icon-144x144.png", "sizes": "144x144", "type": "image/png" },
-    { "src": "icons/admin/icon-152x152.png", "sizes": "152x152", "type": "image/png" },
-    { "src": "icons/admin/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/admin/icon-384x384.png", "sizes": "384x384", "type": "image/png" },
-    { "src": "icons/admin/icon-512x512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/admin/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

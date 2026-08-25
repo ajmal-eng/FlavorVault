@@ -4,28 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlavorVault Delivery Login</title>
-  <link rel="icon" href="icons/delivery/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/delivery/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/delivery/favicon-16x16.png">
-  <link rel="apple-touch-icon" href="icons/delivery/apple-touch-icon.png">
   <link rel="manifest" href="manifest-delivery.json">
-  <meta name="theme-color" content="#f97316">
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="theme-color" content="#e8572a">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
-    // Always default to the backend on port 5000. Do NOT fall back to
-    // window.location.origin - if this page is opened via a dev server like
-    // Live Server (e.g. http://127.0.0.1:5500), that origin has no /api or
-    // /socket.io routes, which caused every fetch and the socket connection
-    // to 404 against the wrong server.
-    // Default to whatever hostname this page was opened with, but always on
-    // backend port 5000. This means it correctly targets 127.0.0.1, a LAN IP
-    // (e.g. when opened from a phone), or a real domain - without ever
-    // falling back to a dev-server port like Live Server's 5500.
-    // Deployed backend (Render). Used whenever this page is NOT being served
-    // by that same backend (e.g. hosted separately on flavorvault.wuaze.com).
-    window.__FLAVORVAULT_API_URL__ = window.__FLAVORVAULT_API_URL__ || "https://flavorvault-iy25.onrender.com";
-    const defaultApiBase = `${window.location.protocol}//${window.location.hostname}:5000`;
+    // Frontend (this page) and backend now live on different domains
+    // (frontend on InfinityFree, backend on Render), so always point at
+    // the real backend URL rather than assuming same-origin.
+    const defaultApiBase = "https://flavorvault-iy25.onrender.com";
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
     const originalFetch = window.fetch.bind(window);
@@ -43,6 +33,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <link rel="icon" sizes="32x32" href="Capture-removebg-preview.png">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -62,8 +53,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(250,246,241,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); transition: var(--transition); }
 .nav-inner { max-width: 1320px; margin: 0 auto; padding: 0 24px; height: 68px; display: flex; align-items: center; justify-content: space-between; }
 .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 900; color: var(--fg); text-decoration: none; display: flex; align-items: center; gap: 10px; }
-.nav-logo .logo-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; overflow: hidden; }
-.nav-logo .logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nav-logo .logo-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; }
 .nav-actions { display: flex; gap: 8px; align-items: center; }
 .btn { padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: var(--transition); border: none; display: inline-flex; align-items: center; gap: 8px; font-family: 'DM Sans', sans-serif; }
 .btn-primary { background: var(--accent); color: #fff; }
@@ -109,8 +99,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .route-track { position: relative; height: 72px; padding: 12px; background: rgba(255,255,255,0.95); border-radius: 18px; border: 1px solid rgba(26,18,9,0.08); display: grid; grid-template-columns: minmax(90px,1fr) 48px minmax(90px,1fr); align-items: center; gap: 12px; }
 .route-track.delivered .route-progress { background: rgba(45,138,78,0.45); }
 .route-progress { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); height: 6px; background: rgba(26,18,9,0.12); border-radius: 999px; }
-.route-truck { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; transition: left 0.6s ease; }
-.route-truck.driving { animation: truckRide 3s ease-in-out infinite; }
+.route-truck { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; animation: truckRide 3s ease-in-out infinite; }
 .route-truck.delivered { left: calc(100% - 54px); animation: none; background: var(--green); }
 .route-stop { position: relative; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--fg-muted); }
 .route-stop span { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; }
@@ -133,12 +122,20 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
   <nav class="navbar" id="navbar">
     <div class="nav-inner">
       <a href="indexuser.html" class="nav-logo">
-        <div class="logo-icon"><img src="icons/delivery/icon-192x192.png" alt="FlavorVault"></div>
+        <div class="logo-icon"><i class="fas fa-utensils"></i></div>
         FlavorVault Delivery
       </a>
       <div class="nav-actions">
-        <button class="btn btn-outline btn-sm" onclick="window.location.href='indexuser.html'">User Site</button>
-        <button class="btn btn-primary btn-sm" onclick="window.location.href='admin.html'">Admin Panel</button>
+        <div id="deliveryMenuWrap" style="position:relative;display:inline-block;">
+          <button class="btn btn-outline btn-sm" id="deliveryMenuBtn" onclick="event.stopPropagation(); toggleDeliveryMenu();"><i class="fas fa-bars"></i> Menu</button>
+          <div id="deliveryMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);min-width:190px;overflow:hidden;z-index:200;">
+            <div id="deliveryMenuName" style="padding:14px 16px;font-weight:600;border-bottom:1px solid var(--border);display:none;"></div>
+            <button onclick="window.location.href='indexuser.html'" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);"><i class="fas fa-utensils" style="width:18px;"></i> User Site</button>
+            <button onclick="window.location.href='admin.html'" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);"><i class="fas fa-shield-halved" style="width:18px;"></i> Admin Panel</button>
+            <button id="installAppBtn" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);" onclick="installPwa()"><i class="fas fa-download" style="width:18px;"></i> Install App</button>
+            <button id="deliveryMenuSignOut" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--accent);border-top:1px solid var(--border);" onclick="logout()"><i class="fas fa-right-from-bracket" style="width:18px;"></i> Sign Out</button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -157,6 +154,36 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
     // Only the logged-in delivery boy's session lives in localStorage.
     function getCurrentDelivery(){ try{ return JSON.parse(localStorage.getItem('deliveryBoy')); }catch{ return null; } }
     function setCurrentDelivery(user){ localStorage.setItem('deliveryBoy', JSON.stringify(user)); renderApp(); }
+
+    function toggleDeliveryMenu(){
+      const dropdown = document.getElementById('deliveryMenuDropdown');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+    function closeDeliveryMenu(){
+      const dropdown = document.getElementById('deliveryMenuDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('deliveryMenuWrap');
+      if (wrap && !wrap.contains(e.target)) closeDeliveryMenu();
+    });
+    function updateDeliveryMenu(current){
+      const nameEl = document.getElementById('deliveryMenuName');
+      const signOutBtn = document.getElementById('deliveryMenuSignOut');
+      const menuBtn = document.getElementById('deliveryMenuBtn');
+      if (!nameEl || !signOutBtn || !menuBtn) return;
+      if (current) {
+        nameEl.textContent = current.name;
+        nameEl.style.display = 'block';
+        signOutBtn.style.display = 'block';
+        menuBtn.innerHTML = `<i class="fas fa-user-check"></i> ${current.name.split(' ')[0]}`;
+      } else {
+        nameEl.style.display = 'none';
+        signOutBtn.style.display = 'none';
+        menuBtn.innerHTML = `<i class="fas fa-bars"></i> Menu`;
+      }
+    }
+
     function logout(){
       if(window.deliveryWatchId !== undefined && navigator.geolocation){
         navigator.geolocation.clearWatch(window.deliveryWatchId);
@@ -165,6 +192,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       localStorage.removeItem('deliveryBoy');
       localStorage.removeItem('deliveryAuthToken');
       if(window.deliveryMap){ window.deliveryMap.remove(); window.deliveryMap = null; window.deliveryMarker = null; }
+      closeDeliveryMenu();
       renderApp();
       showToast('Signed out','info');
     }
@@ -267,7 +295,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 
     async function setOrderStatus(orderId, status){
       try {
-        const response = await fetch(`${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/status`, {
+        const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status })
         });
@@ -275,14 +303,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         if(data.success){
           showToast('Order status updated','success');
           await renderApp();
-          // Auto-launch turn-by-turn navigation to the customer's address
-          // the moment delivery starts, instead of requiring an extra tap.
+          // Show the customer's location on the in-page map the moment
+          // delivery starts - stays on this screen, no new tab opened.
           if (status === 'out for delivery') {
             const order = (window.assignedOrders || []).find(o => o.id === orderId);
             const address = order && order.address;
             if (address) {
-              const directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address);
-              window.open(directionsUrl, '_blank');
               showCustomerOnMap(address);
             }
           }
@@ -307,8 +333,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       if(!orders.length) return '<p style="color:var(--fg-muted)">No orders assigned yet.</p>';
       return orders.map(o => {
         const deliveredClass = o.status === 'delivered' ? ' delivered' : '';
-        const drivingClass = o.status === 'out for delivery' ? ' driving' : '';
-        const routeLabel = o.status === 'delivered' ? 'Delivery complete' : o.status === 'out for delivery' ? 'On the way' : 'Live delivery route';
+        const routeLabel = o.status === 'delivered' ? 'Delivery complete' : 'Live delivery route';
         const routeStatus = o.status === 'delivered' ? 'Delivered successfully' : `Status: ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}`;
         return `<div class="order-card fade-in" style="margin-bottom:12px;">
           <div class="order-id-col">
@@ -324,7 +349,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
               <div class="route-label">${routeLabel}</div>
               <div class="route-track${deliveredClass}">
                 <div class="route-progress"></div>
-                <div class="route-truck${deliveredClass}${drivingClass}"><i class="fas fa-truck"></i></div>
+                <div class="route-truck${deliveredClass}"><i class="fas fa-truck"></i></div>
                 <div class="route-stop start"><span></span>Kitchen</div>
                 <div class="route-stop end"><span></span>Customer</div>
               </div>
@@ -364,19 +389,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       window.deliveryMarker = L.marker([lat, lng]).addTo(window.deliveryMap).bindPopup('You are here').openPopup();
     }
 
-    // Built lazily (not at top level) - if the Leaflet CDN script is slow or
-    // blocked (common on mobile data), `L` is undefined. Building this icon
-    // at the top level would throw immediately and stop the rest of the
-    // script - including the sign-in form and everything below it - from
-    // ever running, leaving a blank page.
-    function getCustomerIcon(){
-      return L.divIcon({
-        className: 'customer-map-pin',
-        html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 20]
-      });
-    }
+    const customerIcon = L.divIcon({
+      className: 'customer-map-pin',
+      html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 20]
+    });
 
     // Looks up the customer's typed address on the map (free OpenStreetMap
     // geocoding, no API key needed) and shows it as a pin alongside the
@@ -405,7 +423,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         if(window.customerMarker){
           window.customerMarker.setLatLng([lat, lng]);
         } else {
-          window.customerMarker = L.marker([lat, lng], { icon: getCustomerIcon() }).addTo(window.deliveryMap).bindPopup('Customer location');
+          window.customerMarker = L.marker([lat, lng], { icon: customerIcon }).addTo(window.deliveryMap).bindPopup('Customer location');
         }
         window.customerMarker.openPopup();
 
@@ -460,6 +478,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
     async function renderApp(){
       const app=document.getElementById('deliveryApp');
       const current=getCurrentDelivery();
+      updateDeliveryMenu(current);
       if(!current){
         app.innerHTML=`
           <div class="panel-card" style="max-width:520px;margin:40px auto;">
@@ -481,7 +500,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           <p><strong>Email:</strong> ${current.email}</p>
           <p><strong>Phone:</strong> ${current.phone||'Not provided'}</p>
           <p><strong>Admin contact:</strong> ${ADMIN_CONTACT_EMAIL}</p>
-          <button class="btn btn-outline btn-sm" style="margin-top:16px;" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
         </div>
         <div class="admin-card fade-in" style="margin-bottom:24px;">
           <h3>My Live Location</h3>
@@ -542,12 +560,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       document.getElementById('orderDetailModal').classList.remove('open');
     }
 
-    // Guarded: if the socket.io CDN script is slow/blocked (common on mobile
-    // data), `io` is undefined. Without this guard that throws and stops the
-    // whole script from running, leaving a blank page.
-    const socket = (typeof io !== 'undefined')
-      ? io(window.FLAVORVAULT_API_BASE)
-      : (console.warn('socket.io failed to load - live updates disabled, app still works'), { on(){}, off(){}, emit(){} });
+    const socket = io(window.FLAVORVAULT_API_BASE);
     socket.on("delivery-assigned", data => {
       const currentBoy = getCurrentDelivery();
       if (!currentBoy || data.deliveryBoyId !== currentBoy._id) return;
@@ -560,8 +573,32 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 
     window.addEventListener('storage',(event)=>{ if(event.key==='deliveryBoy') renderApp(); });
     window.addEventListener('load', async ()=>{ await renderApp(); });
+
+    // ---- Install as an app (PWA) ----
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'inline-flex';
+    });
+    async function installPwa() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('installAppBtn').style.display = 'none';
+    }
+    window.addEventListener('appinstalled', () => {
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+      });
+    }
   </script>
-  <script src="pwa-install.js"></script>
 </body>
 </html>
 

@@ -4,28 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlavorVault Kitchen</title>
-  <link rel="icon" href="icons/chef/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/chef/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/chef/favicon-16x16.png">
-  <link rel="apple-touch-icon" href="icons/chef/apple-touch-icon.png">
   <link rel="manifest" href="manifest-chef.json">
-  <meta name="theme-color" content="#f97316">
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="theme-color" content="#e8572a">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
-    // Auto-detect the backend the same way the other pages do: assume it's
-    // always on port 5000 on whatever host we're viewing this from, since
-    // that's correct whether this file is opened directly, via a Live
-    // Server extension on another port, or served by the backend itself.
-    // Can still be overridden with ?api=http://... for other setups.
+    // Frontend (this page) and backend now live on different domains
+    // (frontend on InfinityFree, backend on Render), so always point at
+    // the real backend URL rather than assuming same-origin.
     const apiParam = new URLSearchParams(window.location.search).get("api");
-    // Deployed backend (Render). Used whenever this page is NOT being served
-    // by that same backend (e.g. hosted separately on flavorvault.wuaze.com).
-    window.__FLAVORVAULT_API_URL__ = window.__FLAVORVAULT_API_URL__ || "https://flavorvault-iy25.onrender.com";
-    const rawHost = window.location.hostname;
-    const host = rawHost || "localhost";
-    const protocol = window.location.protocol.startsWith("http") ? window.location.protocol : "http:";
-    const defaultApiBase = `${protocol}//${host}:5000`;
-    window.FLAVORVAULT_API_BASE = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
+    window.FLAVORVAULT_API_BASE = (apiParam || "https://flavorvault-iy25.onrender.com").replace(/\/$/, "");
     const originalFetch = window.fetch.bind(window);
     window.fetch = function(resource, options) {
       const token = localStorage.getItem("chefAuthToken");
@@ -36,342 +26,190 @@
       return originalFetch(resource, options);
     };
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
       --accent: #e8572a;
       --accent-hover: #d6491f;
       --green: #2d8a4e;
-      --amber: #c9832c;
       --bg: #faf7f2;
-      --card: #fffdfa;
+      --card: #ffffff;
       --border: #ece4d8;
       --fg: #2b2420;
       --fg-muted: #8a7f72;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    }
     body {
       font-family: 'DM Sans', sans-serif;
-      background:
-        radial-gradient(circle at 10% 0%, rgba(232,87,42,0.06), transparent 45%),
-        var(--bg);
+      background: var(--bg);
       color: var(--fg);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 32px 16px 80px;
+      padding: 32px 16px;
     }
     header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 36px;
-      width: 100%;
-      max-width: 480px;
-      justify-content: space-between;
+      margin-bottom: 32px;
     }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .header-logo { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; display: block; }
-    header i.fa-kitchen-set { color: var(--accent); font-size: 1.5rem; }
+    header i { color: var(--accent); font-size: 1.6rem; }
     header h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 1.5rem;
-      letter-spacing: -0.01em;
+      font-size: 1.6rem;
     }
     .queue-badge {
       background: var(--accent);
       color: #fff;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 700;
-      padding: 5px 13px;
+      padding: 4px 12px;
       border-radius: 20px;
-      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
+      margin-left: 8px;
     }
-    .queue-badge.bump { animation: badgeBump 0.4s cubic-bezier(0.34,1.56,0.64,1); }
-    @keyframes badgeBump {
-      0% { transform: scale(1); }
-      40% { transform: scale(1.28); background: var(--amber); }
-      100% { transform: scale(1); }
-    }
-    .lock-btn {
-      background: transparent;
+    .order-card {
+      background: var(--card);
       border: 1px solid var(--border);
-      color: var(--fg-muted);
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .lock-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(232,87,42,0.06); }
-
-    /* Ticket stack - the current order card sits on top of two faint offset
-       edges, giving a tactile sense of how many tickets are behind it,
-       like a real kitchen order rail. */
-    .ticket-stack {
-      position: relative;
+      border-radius: 20px;
+      padding: 36px;
       width: 100%;
       max-width: 480px;
-    }
-    .ticket-stack::before,
-    .ticket-stack::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: -6px;
-      width: 92%;
-      height: 100%;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      transform: translateX(-50%) scale(0.96);
-      z-index: 0;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .ticket-stack::after { bottom: -12px; transform: translateX(-50%) scale(0.92); }
-    .ticket-stack.has-queue::before { opacity: 0.7; }
-    .ticket-stack.has-more::after { opacity: 0.4; }
-
-    .order-card {
-      position: relative;
-      z-index: 1;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 34px 36px 30px;
-      width: 100%;
-      box-shadow: 0 14px 34px rgba(43,36,32,0.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
       text-align: center;
-      animation: ticketIn 0.4s cubic-bezier(0.22,1,0.36,1);
-    }
-    @keyframes ticketIn {
-      from { opacity: 0; transform: translateY(10px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .ticket-perf {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-    .ticket-perf span {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--border);
     }
     .order-number {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.9rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 900;
       margin-bottom: 4px;
     }
     .order-time {
       color: var(--fg-muted);
-      font-size: 0.88rem;
-      margin-bottom: 22px;
+      font-size: 0.9rem;
+      margin-bottom: 24px;
     }
-    .order-meta {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 22px;
-    }
-    .meta-pill {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      font-weight: 500;
-      padding: 5px 11px;
-      border-radius: 20px;
-      background: rgba(43,36,32,0.05);
-      color: var(--fg-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .meta-pill.paid { background: rgba(45,138,78,0.1); color: var(--green); }
-    .meta-pill.unpaid { background: rgba(201,131,44,0.12); color: var(--amber); }
     .items-list {
       text-align: left;
-      border-top: 1px dashed var(--border);
-      border-bottom: 1px dashed var(--border);
-      padding: 18px 0;
-      margin-bottom: 26px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      margin-bottom: 28px;
     }
     .item-row {
       display: flex;
       justify-content: space-between;
-      padding: 7px 0;
-      font-size: 1.02rem;
+      padding: 8px 0;
+      font-size: 1.05rem;
     }
     .item-qty {
       background: var(--accent);
       color: #fff;
-      font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
       border-radius: 8px;
-      padding: 2px 9px;
+      padding: 2px 10px;
       margin-right: 10px;
-      font-size: 0.85rem;
-    }
-    .item-price {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--fg-muted);
       font-size: 0.9rem;
     }
-    .order-total {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 24px;
-      padding: 0 2px;
-    }
-    .order-total .label { color: var(--fg-muted); font-size: 0.85rem; }
-    .order-total .value { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.15rem; }
     .prepare-btn {
       width: 100%;
       background: var(--green);
       color: #fff;
       border: none;
       border-radius: 14px;
-      padding: 19px;
-      font-size: 1.05rem;
+      padding: 20px;
+      font-size: 1.1rem;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      transition: background 0.2s, transform 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      box-shadow: 0 8px 20px rgba(45,138,78,0.22);
     }
-    .prepare-btn:hover:not(:disabled) { background: #24703e; transform: translateY(-2px); box-shadow: 0 10px 24px rgba(45,138,78,0.3); }
-    .prepare-btn:active:not(:disabled) { transform: translateY(0); }
-    .prepare-btn:disabled { opacity: 0.65; cursor: not-allowed; box-shadow: none; }
-    .prepare-btn.success { background: var(--green); }
-    .prepare-btn .fa-check-circle { animation: checkPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
-    @keyframes checkPop {
-      0% { transform: scale(0.4); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
+    .prepare-btn:hover { background: #24703e; transform: translateY(-1px); }
+    .prepare-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .empty-state {
-      position: relative;
-      z-index: 1;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 64px 36px;
+      padding: 60px 36px;
       width: 100%;
       max-width: 480px;
       text-align: center;
       color: var(--fg-muted);
-      animation: ticketIn 0.4s cubic-bezier(0.22,1,0.36,1);
     }
-    .empty-state i {
-      font-size: 2.4rem;
-      color: var(--green);
-      margin-bottom: 18px;
-      display: inline-block;
-      animation: breathe 2.6s ease-in-out infinite;
-    }
-    @keyframes breathe {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.08); opacity: 0.75; }
-    }
-    .empty-state p { font-size: 0.98rem; }
+    .empty-state i { font-size: 2.5rem; color: var(--green); margin-bottom: 16px; }
     .toast {
       position: fixed;
-      bottom: 28px;
+      bottom: 24px;
       left: 50%;
-      transform: translateX(-50%) translateY(12px);
+      transform: translateX(-50%);
       background: var(--fg);
       color: #fff;
-      padding: 13px 26px;
-      border-radius: 12px;
+      padding: 12px 24px;
+      border-radius: 10px;
       font-size: 0.9rem;
-      font-weight: 500;
       opacity: 0;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      transition: opacity 0.3s;
       pointer-events: none;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      z-index: 10;
     }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .toast.error { background: var(--accent); }
-    .login-card {
-      animation: ticketIn 0.4s cubic-bezier(0.22,1,0.36,1);
-    }
-    .login-card input:focus {
-      outline: none;
-      border-color: var(--accent) !important;
-      box-shadow: 0 0 0 3px rgba(232,87,42,0.12);
-    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
   <header>
-    <div class="header-left">
-      <img class="header-logo" src="icons/chef/icon-192x192.png" alt="FlavorVault">
-      <h1>Kitchen</h1>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span class="queue-badge" id="queueBadge">0 waiting</span>
-      <button class="lock-btn" id="lockBtn" title="Lock kitchen screen" style="display:none;">
-        <i class="fas fa-lock"></i>
-      </button>
+    <i class="fas fa-kitchen-set"></i>
+    <h1>Kitchen</h1>
+    <span class="queue-badge" id="queueBadge">0 waiting</span>
+    <div id="chefMenuWrap" style="position:relative;margin-left:auto;">
+      <button id="chefMenuBtn" onclick="event.stopPropagation(); toggleChefMenu();" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;"><i class="fas fa-bars"></i> Menu</button>
+      <div id="chefMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;color:var(--fg);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);min-width:180px;overflow:hidden;z-index:200;">
+        <button id="installAppBtn" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);" onclick="installPwa();closeChefMenu();"><i class="fas fa-download" style="width:18px;"></i> Install App</button>
+        <button style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--accent);border-top:1px solid var(--border);" onclick="chefLogout();closeChefMenu();"><i class="fas fa-right-from-bracket" style="width:18px;"></i> Log Out</button>
+      </div>
     </div>
   </header>
 
-  <div id="loginScreen" class="order-card login-card" style="max-width:340px;">
+  <div id="loginScreen" class="order-card" style="max-width:340px;">
     <h3 style="margin-bottom:16px;">Kitchen Login</h3>
     <input type="password" id="chefPinInput" placeholder="Enter kitchen PIN" inputmode="numeric"
-      style="width:100%;padding:14px;border:1px solid var(--border);border-radius:10px;font-size:1.1rem;text-align:center;letter-spacing:4px;margin-bottom:14px;transition:border-color 0.2s, box-shadow 0.2s;">
+      style="width:100%;padding:14px;border:1px solid var(--border);border-radius:10px;font-size:1.1rem;text-align:center;letter-spacing:4px;margin-bottom:14px;">
     <p id="chefLoginError" style="color:var(--accent);font-size:0.85rem;margin-bottom:14px;display:none;"></p>
     <button class="prepare-btn" id="chefLoginBtn"><i class="fas fa-unlock"></i> Unlock</button>
   </div>
 
-  <div class="ticket-stack" id="ticketStack" style="display:none;">
-    <div id="content">
-      <div class="empty-state">
-        <i class="fas fa-circle-notch fa-spin"></i>
-        <p>Loading...</p>
-      </div>
+  <div id="content" style="display:none;">
+    <div class="empty-state">
+      <i class="fas fa-circle-notch fa-spin"></i>
+      <p>Loading...</p>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    const loginScreen = document.getElementById('loginScreen');
-    const ticketStack = document.getElementById('ticketStack');
-    const lockBtn = document.getElementById('lockBtn');
-
-    function showApp() {
-      loginScreen.style.display = 'none';
-      ticketStack.style.display = 'block';
-      lockBtn.style.display = 'flex';
+    function toggleChefMenu(){
+      const dropdown = document.getElementById('chefMenuDropdown');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     }
-    function showLogin() {
-      ticketStack.style.display = 'none';
-      lockBtn.style.display = 'none';
-      loginScreen.style.display = 'block';
+    function closeChefMenu(){
+      const dropdown = document.getElementById('chefMenuDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('chefMenuWrap');
+      if (wrap && !wrap.contains(e.target)) closeChefMenu();
+    });
+
+    function chefLogout() {
+      localStorage.removeItem('chefAuthToken');
+      document.getElementById('loginScreen').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
       document.getElementById('chefPinInput').value = '';
-      document.getElementById('chefPinInput').focus();
+      currentOrder = null;
     }
 
     async function chefLogin() {
@@ -392,7 +230,8 @@
           return;
         }
         localStorage.setItem('chefAuthToken', data.token);
-        showApp();
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
         loadQueue();
       } catch (err) {
         console.error('CHEF LOGIN ERROR:', err);
@@ -403,27 +242,19 @@
     document.getElementById('chefLoginBtn').addEventListener('click', chefLogin);
     document.getElementById('chefPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') chefLogin(); });
 
-    lockBtn.addEventListener('click', () => {
-      localStorage.removeItem('chefAuthToken');
-      showLogin();
-    });
-
     // If already logged in from earlier, skip straight to the queue.
     if (localStorage.getItem('chefAuthToken')) {
-      showApp();
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
     }
 
     let currentOrder = null;
     let marking = false;
-    let lastQueueLength = null;
-    let toastTimer = null;
 
-    function showToast(msg, type = 'default') {
-      const toast = document.getElementById('toast');
-      clearTimeout(toastTimer);
-      toast.innerHTML = `<i class="fas ${type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i> ${msg}`;
-      toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
-      toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2800);
+    function showToast(msg) {
+      // Pop-up notifications disabled to match the rest of the app.
+      // Errors/success are still logged to the console for debugging.
+      console.log(msg);
     }
 
     function timeAgo(dateStr) {
@@ -434,10 +265,6 @@
       if (mins < 60) return `${mins} minutes ago`;
       const hrs = Math.floor(mins / 60);
       return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
-    }
-
-    function formatCurrency(n) {
-      return `₹${Number(n || 0).toFixed(0)}`;
     }
 
     function render() {
@@ -454,18 +281,10 @@
       }
 
       const order = currentOrder;
-      const itemCount = (order.items || []).reduce((sum, i) => sum + (i.quantity || 0), 0);
-      const isPaid = String(order.paymentStatus).toLowerCase() === 'paid';
-
       content.innerHTML = `
         <div class="order-card">
-          <div class="ticket-perf"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          <div class="order-number">#${String(order._id).slice(-4).toUpperCase()}</div>
+          <div class="order-number">Order #${String(order._id).slice(-4).toUpperCase()}</div>
           <div class="order-time">For ${order.customerName || 'Customer'} · Placed ${timeAgo(order.createdAt)}</div>
-          <div class="order-meta">
-            <span class="meta-pill"><i class="fas fa-layer-group"></i> ${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
-            <span class="meta-pill ${isPaid ? 'paid' : 'unpaid'}"><i class="fas ${isPaid ? 'fa-check' : 'fa-clock'}"></i> ${isPaid ? 'Paid' : (order.paymentMethod || 'COD')}</span>
-          </div>
           <div class="items-list">
             ${(order.items || []).map(i => `
               <div class="item-row">
@@ -473,28 +292,13 @@
               </div>
             `).join('')}
           </div>
-          <div class="order-total">
-            <span class="label">Order total</span>
-            <span class="value">${formatCurrency(order.totalAmount)}</span>
-          </div>
           <button class="prepare-btn" id="prepareBtn" ${marking ? 'disabled' : ''}>
-            <i class="fas ${marking ? 'fa-spinner fa-spin' : 'fa-check'}"></i> ${marking ? 'Marking...' : 'Mark as Prepared'}
-          </button>
-          <button class="prepare-btn" id="printTicketBtn" style="margin-top:10px;background:var(--fg-muted,#555);">
-            <i class="fas fa-print"></i> Print Ticket
+            <i class="fas fa-check"></i> ${marking ? 'Marking...' : 'Mark as Prepared'}
           </button>
         </div>
       `;
 
       document.getElementById('prepareBtn').addEventListener('click', markPrepared);
-      document.getElementById('printTicketBtn').addEventListener('click', () => printTicket(order._id));
-    }
-
-    function printTicket(orderId) {
-      window.open(
-        `${window.FLAVORVAULT_API_BASE}/api/orders/${orderId}/invoice?print=true`,
-        "_blank"
-      );
     }
 
     async function loadQueue() {
@@ -503,16 +307,7 @@
         const data = await res.json();
         if (data.success) {
           currentOrder = data.order;
-          const badge = document.getElementById('queueBadge');
-          badge.textContent = `${data.queueLength} waiting`;
-          if (lastQueueLength !== null && data.queueLength > lastQueueLength) {
-            badge.classList.remove('bump');
-            void badge.offsetWidth; // restart animation
-            badge.classList.add('bump');
-          }
-          lastQueueLength = data.queueLength;
-          ticketStack.classList.toggle('has-queue', data.queueLength > 1);
-          ticketStack.classList.toggle('has-more', data.queueLength > 2);
+          document.getElementById('queueBadge').textContent = `${data.queueLength} waiting`;
           render();
         }
       } catch (err) {
@@ -534,34 +329,51 @@
           marking = false;
           await loadQueue();
         } else {
-          showToast(data.message || 'Could not update order', 'error');
+          showToast(data.message || 'Could not update order');
           marking = false;
           render();
         }
       } catch (err) {
         console.error('MARK PREPARED ERROR:', err);
-        showToast('Cannot connect to backend', 'error');
+        showToast('Cannot connect to backend');
         marking = false;
         render();
       }
     }
 
-    if (localStorage.getItem('chefAuthToken')) {
-      loadQueue();
-    }
+    loadQueue();
 
-    // Guarded: if the socket.io CDN script is slow/blocked (common on mobile
-    // data), `io` is undefined. Without this guard that throws and stops the
-    // whole script from running, leaving a blank page.
-    const socket = (typeof io !== 'undefined')
-      ? io(window.FLAVORVAULT_API_BASE)
-      : (console.warn('socket.io failed to load - live updates disabled, app still works'), { on(){}, off(){}, emit(){} });
-    socket.on('new-order', () => { if (localStorage.getItem('chefAuthToken')) loadQueue(); });
-    socket.on('order-prepared', () => { if (localStorage.getItem('chefAuthToken')) loadQueue(); });
+    const socket = io(window.FLAVORVAULT_API_BASE);
+    socket.on('new-order', () => loadQueue());
+    socket.on('order-prepared', () => loadQueue());
 
     // Fallback polling in case the socket connection drops.
-    setInterval(() => { if (localStorage.getItem('chefAuthToken')) loadQueue(); }, 15000);
+    setInterval(loadQueue, 15000);
+
+    // ---- Install as an app (PWA) ----
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'inline-flex';
+    });
+    async function installPwa() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('installAppBtn').style.display = 'none';
+    }
+    window.addEventListener('appinstalled', () => {
+      const btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+      });
+    }
   </script>
-  <script src="pwa-install.js"></script>
 </body>
 </html>
