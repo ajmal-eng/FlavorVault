@@ -6,8 +6,8 @@
 <title>FlavorVault</title>
 <link rel="manifest" href="manifest-user.json">
 <link rel="icon" href="favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/user/favicon-32x32.png">
+<link rel="apple-touch-icon" href="icons/user/apple-touch-icon.png">
 <meta name="theme-color" content="#e8572a">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -2248,11 +2248,13 @@ document.addEventListener('keydown',e=>{
 // ============================================================
 // INIT
 // ============================================================
-const socket = io(window.FLAVORVAULT_API_BASE);
-
-socket.on("order-status-updated", data => {
-  showToast(`Order ${data.status}`, "success");
-  renderOrders();
+let socket;
+window.addEventListener('load', () => {
+  socket = io(window.FLAVORVAULT_API_BASE);
+  socket.on("order-status-updated", data => {
+    showToast(`Order ${data.status}`, "success");
+    renderOrders();
+  });
 });
 
 

@@ -6,8 +6,8 @@
   <title>FlavorVault Admin</title>
   <link rel="manifest" href="manifest-admin.json">
   <link rel="icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/admin/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="icons/admin/apple-touch-icon.png">
   <meta name="theme-color" content="#e8572a">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
   <script>
@@ -1990,18 +1990,21 @@ select.form-input { cursor: pointer; }
       if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
     }
 
-    const socket = io(window.FLAVORVAULT_API_BASE);
+    let socket;
+    window.addEventListener('load', () => {
+      socket = io(window.FLAVORVAULT_API_BASE);
 
-    socket.on("new-order", order => {
-      showToast(`New Order: ${order.customerName}`, "success");
-      loadOrders();
-      loadDashboard();
-      loadSalesChart();
-      loadTopFoods();
-    });
+      socket.on("new-order", order => {
+        showToast(`New Order: ${order.customerName}`, "success");
+        loadOrders();
+        loadDashboard();
+        loadSalesChart();
+        loadTopFoods();
+      });
 
-    socket.on("delivery-assigned", () => {
-      loadOrders();
+      socket.on("delivery-assigned", () => {
+        loadOrders();
+      });
     });
 
     window.addEventListener('storage',(event)=>{ if(event.key?.startsWith('fv_')) renderApp(); });
