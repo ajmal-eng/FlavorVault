@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <meta name="theme-color" content="#e8572a">
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
     // Frontend (this page) and backend now live on different domains
@@ -967,7 +967,7 @@ select.form-input { cursor: pointer; }
         }
         showToast('Food updated successfully', 'success');
         closeEditSection();
-        await loadFoods();
+        await renderApp();
       } catch(err){
         console.error(err);
         showToast('Cannot connect to backend', 'error');
@@ -1227,7 +1227,7 @@ select.form-input { cursor: pointer; }
           return;
         }
         showToast(currentlyAvailable ? "Marked unavailable" : "Restocked", "success");
-        await loadFoods();
+        await renderApp();
       } catch (error) {
         console.error(error);
         showToast("Cannot connect to backend", "error");
@@ -1256,8 +1256,9 @@ select.form-input { cursor: pointer; }
 
         showToast("Food deleted successfully", "success");
 
-        // Reload food list
-        loadFoods();
+        // Re-render immediately so the item disappears without a manual
+        // page reload.
+        await renderApp();
 
       } catch (error) {
         console.error(error);
@@ -1957,6 +1958,10 @@ select.form-input { cursor: pointer; }
             const fileNameLabel = document.getElementById("newFoodImgFileName");
             if (fileNameLabel) fileNameLabel.textContent = "No file chosen";
             localStorage.removeItem("fv_addFoodDraft");
+
+            // Refresh immediately so the new item shows up without a manual
+            // page reload.
+            await renderApp();
 
           } catch (error) {
             console.error(error);

@@ -11,8 +11,8 @@
 <meta name="theme-color" content="#e8572a">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
     // Frontend (this page) and backend now live on different domains
@@ -46,7 +46,7 @@
       return originalFetch(resource, options);
     };
   </script>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js" defer></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
 <style>
@@ -1055,7 +1055,8 @@ async function placeOrder() {
   const user = getCurrentUser();
 
   if (!user) {
-    showToast('Please sign in first', 'error');
+    showToast('Please sign in to place your order', 'error');
+    openAuthModal('login');
     return;
   }
 
