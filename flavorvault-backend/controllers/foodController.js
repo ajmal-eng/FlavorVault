@@ -84,7 +84,7 @@ const updateFood = async (req, res) => {
     const food = await Food.findByIdAndUpdate(
       id,
       req.body,
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     res.json({

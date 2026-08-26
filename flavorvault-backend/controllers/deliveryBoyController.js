@@ -73,7 +73,7 @@ const updateDeliveryBoy = async (req, res) => {
     const deliveryBoy = await DeliveryBoy.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
 
     res.json({
@@ -128,7 +128,7 @@ const updateLocation = async (req, res) => {
         {
           location: { lat, lng }
         },
-        { new: true }
+        { returnDocument: 'after' }
       );
 
     if (!deliveryBoy) {

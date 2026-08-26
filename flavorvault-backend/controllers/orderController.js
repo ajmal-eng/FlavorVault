@@ -91,7 +91,7 @@ const updateOrderStatus = async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       update,
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!order) {
@@ -149,7 +149,7 @@ const assignDeliveryBoy = async (req, res) => {
         deliveryBoyId,
         deliveryBoyName
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!order) {
@@ -284,7 +284,7 @@ const markOrderPrepared = async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { prepared: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
@@ -301,7 +301,7 @@ const markPaymentReceived = async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { paymentStatus: "Paid" },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
