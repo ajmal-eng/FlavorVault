@@ -292,7 +292,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         const qrModal = document.getElementById('paymentQrModal');
         if (qrModal) qrModal.remove();
         showToast('Marked as paid', 'success');
-        await renderApp();
+        // Only the orders list needs to update (button swaps to "Paid") -
+        // no need to tear down the whole dashboard/map for this.
+        await refreshOrdersList();
       } catch (err) {
         console.error('MARK AS PAID ERROR:', err);
         showToast('Cannot connect to backend', 'error');
@@ -308,11 +310,21 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         const data = await response.json();
         if(data.success){
           showToast('Order status updated','success');
-          await renderApp();
+          if(status === 'delivered'){
+            // Delivered orders drop off this list entirely, so the list
+            // itself needs to be re-fetched - but the map still doesn't.
+            await refreshOrdersList();
+          } else {
+            // Update just this order's card in place so the truck/route
+            // animates smoothly instead of the whole screen flashing.
+            const updated = updateOrderRouteUI(orderId, status);
+            if(!updated) await refreshOrdersList();
+          }
+          const order = (window.assignedOrders || []).find(o => o.id === orderId);
+          if(order) order.status = status;
           // Show the customer's location on the in-page map the moment
           // delivery starts - stays on this screen, no new tab opened.
           if (status === 'out for delivery') {
-            const order = (window.assignedOrders || []).find(o => o.id === orderId);
             const address = order && order.address;
             if (address) {
               showCustomerOnMap(address);
@@ -354,7 +366,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         const deliveredClass = progress.delivered ? ' delivered' : '';
         const transitClass = progress.inTransit ? ' in-transit' : '';
         const routeLabel = progress.delivered ? 'Delivery complete' : 'Live delivery route';
-        return `<div class="order-card fade-in" style="margin-bottom:12px;">
+        return `<div class="order-card fade-in" id="orderCard-${o.id}" style="margin-bottom:12px;">
           <div class="order-id-col">
             <div class="order-id" onclick="openOrderDetails('${o.id}')" style="cursor:pointer;">#${String(o.id).padStart(4,'0')}</div>
             <div class="order-date">${new Date(o.createdAt).toLocaleString()}</div>
@@ -365,14 +377,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
               <i class="fas fa-location-dot"></i> ${o.address || 'Address not available'}
             </div>
             <div class="delivery-route-card">
-              <div class="route-label">${routeLabel}</div>
-              <div class="route-track${deliveredClass}">
-                <div class="route-progress"><div class="route-progress-fill${transitClass}" style="width:${progress.pct}%"></div></div>
-                <div class="route-truck${deliveredClass}${transitClass}" style="left:${progress.pct}%"><i class="fas fa-truck"></i></div>
+              <div class="route-label" id="routeLabel-${o.id}">${routeLabel}</div>
+              <div class="route-track${deliveredClass}" id="routeTrack-${o.id}">
+                <div class="route-progress"><div class="route-progress-fill${transitClass}" id="routeFill-${o.id}" style="width:${progress.pct}%"></div></div>
+                <div class="route-truck${deliveredClass}${transitClass}" id="routeTruck-${o.id}" style="left:${progress.pct}%"><i class="fas fa-truck"></i></div>
                 <div class="route-stop start"><span></span>Kitchen</div>
                 <div class="route-stop end"><span></span>Customer</div>
               </div>
-              <div class="route-status">${progress.label}</div>
+              <div class="route-status" id="routeStatus-${o.id}">${progress.label}</div>
             </div>
           </div>
           <div class="order-total-col">
@@ -392,6 +404,55 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           </div>
         </div>`;
       }).join('');
+    }
+
+    // Updates just one order's route/truck/status text in place, without
+    // touching the rest of the page. This is what actually fixes the
+    // "jerking" - the old code called the full renderApp() on every click,
+    // which tore down and rebuilt the whole dashboard (including the live
+    // GPS map), causing a visible flash/jump every time. Now only the
+    // three elements that actually changed get updated, so the truck
+    // slides smoothly via its existing CSS transition instead of the
+    // whole screen flickering.
+    function updateOrderRouteUI(orderId, status){
+      const progress = getRouteProgress(status);
+      const track = document.getElementById(`routeTrack-${orderId}`);
+      const fill = document.getElementById(`routeFill-${orderId}`);
+      const truck = document.getElementById(`routeTruck-${orderId}`);
+      const statusEl = document.getElementById(`routeStatus-${orderId}`);
+      const labelEl = document.getElementById(`routeLabel-${orderId}`);
+      if(!track || !fill || !truck || !statusEl) return false;
+      track.classList.toggle('delivered', progress.delivered);
+      fill.style.width = progress.pct + '%';
+      fill.classList.toggle('in-transit', progress.inTransit);
+      truck.style.left = progress.pct + '%';
+      truck.classList.toggle('in-transit', progress.inTransit);
+      truck.classList.toggle('delivered', progress.delivered);
+      statusEl.textContent = progress.label;
+      if(labelEl) labelEl.textContent = progress.delivered ? 'Delivery complete' : 'Live delivery route';
+      return true;
+    }
+
+    // Re-fetches assigned orders and refreshes ONLY the orders list (and
+    // its count), leaving the live-location map and everything else on
+    // the page completely untouched. Used for anything that isn't a
+    // simple single-order status change (new assignment, payment marked,
+    // an order dropping off the list after being delivered).
+    async function refreshOrdersList(){
+      const current = getCurrentDelivery();
+      if(!current) return;
+      const assigned = await loadAssignedOrders();
+      window.currentAssignedOrders = assigned;
+      const countEl = document.getElementById('assignedOrdersCount');
+      if(countEl) countEl.textContent = assigned.length;
+      const container = document.getElementById('deliveryOrdersContainer');
+      if(container){
+        container.innerHTML = renderOrders(assigned.filter(o => (o.customerName || '').toLowerCase().includes((window.deliverySearchValue || '').toLowerCase())));
+      } else {
+        // Dashboard isn't mounted yet (e.g. very first load) - fall back
+        // to a full render just this once.
+        await renderApp();
+      }
     }
 
     function initDeliveryMap(lat, lng){
@@ -529,7 +590,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           <p style="margin-top:10px;color:var(--fg-muted);font-size:0.88rem"><i class="fas fa-info-circle"></i> Your location is automatically shared with the customer so they can track your delivery in real time.</p>
         </div>
         <div class="admin-card fade-in">
-          <h3>Assigned Orders (${assigned.length})</h3>
+          <h3>Assigned Orders (<span id="assignedOrdersCount">${assigned.length}</span>)</h3>
           <input type="text" id="deliverySearchOrder" placeholder="Search by customer name..." value="${window.deliverySearchValue || ''}" oninput="filterDeliveryOrders(this.value)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;font-family:inherit;">
           <div id="deliveryOrdersContainer">${renderOrders(assigned.filter(o => (o.customerName || '').toLowerCase().includes((window.deliverySearchValue || '').toLowerCase())))}</div>
         </div>
@@ -588,10 +649,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         const currentBoy = getCurrentDelivery();
         if (!currentBoy || data.deliveryBoyId !== currentBoy._id) return;
         showToast("New Delivery Assigned", "success");
-        renderApp();
+        refreshOrdersList();
       });
       socket.on("order-prepared", () => {
-        renderApp();
+        refreshOrdersList();
       });
     });
 

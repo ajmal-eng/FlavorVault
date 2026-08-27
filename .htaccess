@@ -1,0 +1,8 @@
+# InfinityFree (and some other shared hosts) serve .json and .webmanifest
+# files with the wrong Content-Type by default, which makes browsers fail
+# to parse the PWA manifest ("Manifest: Line: 1, column: 1, Syntax error").
+# Force the correct MIME type explicitly.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/json .json
+</IfModule>
