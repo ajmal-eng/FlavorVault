@@ -13,6 +13,7 @@ const foodRoutes = require("./routes/foodRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const couponRoutes = require("./routes/couponRoutes");
 const deliveryBoyRoutes = require("./routes/deliveryBoyRoutes");
+const chefRoutes = require("./routes/chefRoutes");
 
 connectDB();
 
@@ -39,6 +40,7 @@ app.use("/api/foods", foodRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/deliveryboys", deliveryBoyRoutes);
+app.use("/api/chef", chefRoutes);
 
 app.get("/health", (req, res) => {
   res.json({ success: true, message: "FlavorVault backend is running" });
