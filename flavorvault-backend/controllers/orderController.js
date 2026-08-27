@@ -383,15 +383,37 @@ const getChefQueue = async (req, res) => {
 
 const markOrderPrepared = async (req, res) => {
   try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { prepared: true },
-      { returnDocument: 'after' }
-    );
-    if (!order) {
+    // Find first so we know the order's current stage before touching it -
+    // if it's already moved past "pending" (e.g. an admin already sent it
+    // out for delivery) we don't want the chef's tap to roll it backwards.
+    const existing = await Order.findById(req.params.id);
+    if (!existing) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
+
+    const update = { prepared: true };
+    const currentStatus = String(existing.status || "pending").toLowerCase();
+    if (currentStatus === "pending") {
+      update.status = "preparing";
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      update,
+      { returnDocument: 'after' }
+    );
+
+    // One tap in the kitchen now updates everyone in real time - admin
+    // dashboard, the customer's order tracker, and the delivery app all
+    // listen for "order-status-updated", so they move to "Preparing"
+    // immediately instead of waiting on a separate admin action.
     req.app.get("io").emit("order-prepared", { orderId: order._id });
+    if (update.status) {
+      req.app.get("io").emit("order-status-updated", {
+        orderId: order._id,
+        status: order.status
+      });
+    }
     res.json({ success: true, order });
   } catch (error) {
     res.status(500).json({ message: error.message });
