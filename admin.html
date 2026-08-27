@@ -18,6 +18,13 @@
     const defaultApiBase = "https://flavorvault-iy25.onrender.com";
     const configuredApiBase = (apiParam || window.__FLAVORVAULT_API_URL__ || defaultApiBase).replace(/\/$/, "");
     window.FLAVORVAULT_API_BASE = configuredApiBase;
+    window.FLAVORVAULT_IMAGE_FALLBACK =
+      "data:image/svg+xml;utf8," + encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='220' viewBox='0 0 320 220'>" +
+        "<rect width='320' height='220' fill='#f1ece2'/>" +
+        "<text x='160' y='115' text-anchor='middle' fill='#a89c86' " +
+        "font-family='Arial,sans-serif' font-size='16'>No image</text></svg>"
+      );
     const originalFetch = window.fetch.bind(window);
     window.fetch = function(resource, options) {
       if (typeof resource === "string") {
@@ -879,7 +886,7 @@ select.form-input { cursor: pointer; }
               <span id="editImageFileName" style="font-size:0.85rem;color:var(--fg-muted);">No file chosen</span>
             </div>
           </div>
-          <div style="margin-bottom:20px;"><img id="editImagePreview" src="${food.img || ''}" alt="Preview" style="width:100%;max-width:320px;border-radius:16px;border:1px solid var(--border);object-fit:cover"></div>
+          <div style="margin-bottom:20px;"><img id="editImagePreview" src="${food.img || window.FLAVORVAULT_IMAGE_FALLBACK}" alt="Preview" style="width:100%;max-width:320px;border-radius:16px;border:1px solid var(--border);object-fit:cover" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK"></div>
           <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="saveFoodEdit()"><i class="fas fa-save"></i> Save Changes</button>
             <button class="btn btn-outline" onclick="closeEditSection()"><i class="fas fa-times"></i> Cancel</button>
@@ -1710,7 +1717,7 @@ select.form-input { cursor: pointer; }
                     <span id="newFoodImgFileName" style="font-size:0.85rem;color:var(--fg-muted);">No file chosen</span>
                   </div>
                   <div id="newFoodImgPreviewWrap" style="display:none;margin-top:12px;">
-                    <img id="newFoodImgPreview" class="food-upload-preview">
+                    <img id="newFoodImgPreview" class="food-upload-preview" onerror="this.onerror=null;this.src=window.FLAVORVAULT_IMAGE_FALLBACK">
                   </div>
                 </div>
                 <div class="form-group"><label>Description</label><textarea class="form-input" id="foodDescription" placeholder="Short description"></textarea></div>

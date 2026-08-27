@@ -389,12 +389,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       window.deliveryMarker = L.marker([lat, lng]).addTo(window.deliveryMap).bindPopup('You are here').openPopup();
     }
 
-    const customerIcon = L.divIcon({
-      className: 'customer-map-pin',
-      html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-      iconSize: [20, 20],
-      iconAnchor: [10, 20]
-    });
+    function getCustomerIcon() {
+      return L.divIcon({
+        className: 'customer-map-pin',
+        html: '<div style="background:#e8572a;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 20]
+      });
+    }
 
     // Looks up the customer's typed address on the map (free OpenStreetMap
     // geocoding, no API key needed) and shows it as a pin alongside the
@@ -423,7 +425,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
         if(window.customerMarker){
           window.customerMarker.setLatLng([lat, lng]);
         } else {
-          window.customerMarker = L.marker([lat, lng], { icon: customerIcon }).addTo(window.deliveryMap).bindPopup('Customer location');
+          window.customerMarker = L.marker([lat, lng], { icon: getCustomerIcon() }).addTo(window.deliveryMap).bindPopup('Customer location');
         }
         window.customerMarker.openPopup();
 
