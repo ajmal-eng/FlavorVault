@@ -11,8 +11,7 @@
 <meta name="theme-color" content="#e8572a">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
-<script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
   <script>
     const apiParam = new URLSearchParams(window.location.search).get("api");
     // Frontend (this page) and backend now live on different domains
@@ -409,6 +408,7 @@ select.form-input { cursor: pointer; }
 .order-status { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
 .status-pending { background: #fef3c7; color: #92400e; }
 .status-preparing { background: #dbeafe; color: #1e40af; }
+.status-out-for-delivery { background: #ede9fe; color: #6d28d9; }
 .status-delivered { background: var(--green-light); color: var(--green); }
 .status-cancelled { background: #fee2e2; color: #991b1b; }
 .footer {
@@ -494,15 +494,22 @@ select.form-input { cursor: pointer; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* Delivery tracker animation for users */
-.delivery-tracker { margin-top:16px; padding:18px; background: rgba(45,138,78,0.08); border-radius:18px; position:relative; overflow:hidden; }
-.delivery-route { display:flex; align-items:center; gap:14px; }
-.delivery-trackline { position:relative; flex:1; height:12px; background: rgba(26,18,9,0.12); border-radius:999px; }
-.delivery-step { position:absolute; top:-4px; width:18px; height:18px; border-radius:50%; background: var(--accent); animation:footstep 1.6s linear infinite; }
-.delivery-step:nth-child(2) { animation-delay: 0.4s; background: var(--green); }
-.delivery-step:nth-child(3) { animation-delay: 0.8s; background: var(--accent-hover); }
-.delivery-note { margin-top:12px; padding:14px 16px; background: #fff; border: 1px solid var(--border); border-radius:16px; color: var(--fg-muted); font-size:0.94rem; line-height:1.6; }
-@keyframes footstep { 0% { left: 0%; } 50% { left: calc(100% - 18px); } 100% { left: 0%; } }
+/* Delivery tracker - real, status-driven progress (fast + responsive) */
+.delivery-tracker { margin-top:16px; padding:18px 18px 16px; background: rgba(45,138,78,0.08); border-radius:18px; position:relative; overflow:hidden; }
+.tracker-stages { display:flex; align-items:flex-start; gap:0; }
+.tracker-stage { flex:1; text-align:center; position:relative; }
+.tracker-stage-dot { width:26px; height:26px; border-radius:50%; margin:0 auto 6px; display:flex; align-items:center; justify-content:center; background:#fff; border:2px solid rgba(26,18,9,0.18); color: var(--fg-muted); font-size:0.72rem; position:relative; z-index:2; transition: background-color .35s cubic-bezier(.4,0,.2,1), border-color .35s cubic-bezier(.4,0,.2,1), color .35s cubic-bezier(.4,0,.2,1), transform .35s cubic-bezier(.4,0,.2,1); }
+.tracker-stage-line { position:absolute; top:13px; left:-50%; width:100%; height:3px; background: rgba(26,18,9,0.14); z-index:1; }
+.tracker-stage:first-child .tracker-stage-line { display:none; }
+.tracker-stage-line-fill { height:100%; width:0%; background: var(--green); transition: width .45s cubic-bezier(.4,0,.2,1); }
+.tracker-stage-label { font-size:0.72rem; font-weight:600; color: var(--fg-muted); transition: color .35s ease; }
+.tracker-stage.done .tracker-stage-dot { background: var(--green); border-color: var(--green); color:#fff; }
+.tracker-stage.done .tracker-stage-label { color: var(--green); }
+.tracker-stage.active .tracker-stage-dot { background: var(--accent); border-color: var(--accent); color:#fff; transform: scale(1.15); animation: trackerPulse 1s ease-in-out infinite; }
+.tracker-stage.active .tracker-stage-label { color: var(--accent); font-weight:700; }
+@keyframes trackerPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,87,42,0.35); } 50% { box-shadow: 0 0 0 6px rgba(232,87,42,0); } }
+.delivery-note { margin-top:14px; padding:12px 16px; background: #fff; border: 1px solid var(--border); border-radius:16px; color: var(--fg-muted); font-size:0.88rem; line-height:1.5; display:flex; align-items:center; gap:8px; }
+.delivery-note i { color: var(--accent); }
 
 </style>
 </head>
@@ -1150,82 +1157,56 @@ async function submitCheckout() {
     return;
   }
 
-  // Online payment: actually collect real payment via Razorpay before
-  // creating the order, instead of just marking it "Paid" on a click.
-  await startRazorpayPayment(orderPayload, totalAmount);
+  // Online payment: show a UPI "scan to pay" QR code, same pattern the
+  // delivery site already uses for its own payment collection.
+  await showUserPaymentQr(orderPayload, totalAmount);
 }
 
-async function startRazorpayPayment(orderPayload, totalAmount) {
+async function showUserPaymentQr(orderPayload, amount) {
+  let upiId;
   try {
-    const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/payment/create-order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: totalAmount })
-    });
-    const paymentOrder = await res.json();
-
-    if (!paymentOrder.success) {
-      showToast('Could not start payment. Try again.', 'error');
+    const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/payment/upi-id`);
+    const data = await res.json();
+    if (!data.success) {
+      showToast(data.message || 'Online payment is not set up yet - choose Cash on Delivery instead', 'error');
       return;
     }
-
-    const razorpayOptions = {
-      key: paymentOrder.keyId,
-      amount: paymentOrder.amount,
-      currency: paymentOrder.currency,
-      name: 'FlavorVault',
-      description: 'Order Payment',
-      order_id: paymentOrder.orderId,
-      handler: async function (response) {
-        // Verify the payment signature on the backend before trusting it,
-        // then create the actual order only after verification succeeds.
-        try {
-          const verifyRes = await fetch(`${window.FLAVORVAULT_API_BASE}/api/payment/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
-            })
-          });
-          const verifyData = await verifyRes.json();
-          if (!verifyData.success) {
-            showToast('Payment verification failed. You have not been charged for an order.', 'error');
-            return;
-          }
-          await placeOrderInBackend({
-            ...orderPayload,
-            paymentStatus: 'Paid',
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id
-          });
-        } catch (err) {
-          console.error('PAYMENT VERIFY ERROR:', err);
-          showToast('Payment succeeded but order creation failed. Contact support with your payment ID: ' + response.razorpay_payment_id, 'error');
-        }
-      },
-      prefill: {
-        name: orderPayload.customerName,
-        contact: orderPayload.phone
-      },
-      theme: { color: '#e8572a' },
-      modal: {
-        ondismiss: function () {
-          showToast('Payment cancelled - order was not placed', 'info');
-        }
-      }
-    };
-
-    const rzp = new Razorpay(razorpayOptions);
-    rzp.on('payment.failed', function (response) {
-      showToast('Payment failed: ' + (response.error?.description || 'Please try again'), 'error');
-    });
-    rzp.open();
+    upiId = data.upiId;
   } catch (err) {
-    console.error('START PAYMENT ERROR:', err);
+    console.error('FETCH UPI ID ERROR:', err);
     showToast('Cannot connect to backend', 'error');
+    return;
   }
+
+  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=FlavorVault&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('FlavorVault order')}`;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiUri)}`;
+
+  let modal = document.getElementById('userPaymentQrModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'userPaymentQrModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px;max-width:340px;width:100%;text-align:center;">
+      <h3 style="margin-bottom:6px;">Scan to Pay</h3>
+      <p style="color:var(--fg-muted);margin-bottom:16px;">₹${amount.toFixed(2)}</p>
+      <img src="${qrImageUrl}" alt="Payment QR" style="width:100%;max-width:260px;border-radius:12px;border:1px solid var(--border);">
+      <p style="font-size:0.8rem;color:var(--fg-muted);margin:14px 0;">After paying, tap the button below. Your order will show as payment-pending until the restaurant confirms it was received.</p>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" id="userPaidConfirmBtn">I've Paid</button>
+      <button class="btn btn-outline" style="width:100%;" id="userPaidCancelBtn">Cancel</button>
+    </div>
+  `;
+
+  document.getElementById('userPaidCancelBtn').onclick = () => {
+    modal.remove();
+    showToast('Payment cancelled - order was not placed', 'info');
+  };
+  document.getElementById('userPaidConfirmBtn').onclick = async () => {
+    modal.remove();
+    await placeOrderInBackend({ ...orderPayload, paymentStatus: 'Pending' });
+  };
 }
 
 async function placeOrderInBackend(payload) {
@@ -1918,6 +1899,38 @@ function toggleCart(){
 }
 
 // ---- Orders ----
+// Maps a real order status to a stage index (0-3) so the tracker always
+// reflects what's actually happening, instead of animating forever.
+function getOrderStageIndex(o){
+  const status = String(o.status||'pending').toLowerCase();
+  if(status==='delivered') return 3;
+  if(status==='out for delivery' || status==='out-for-delivery' || (o.deliveryBoyId && (o.prepared || status==='preparing') && status!=='pending')) return 2;
+  if(status==='preparing' || o.prepared) return 1;
+  return 0;
+}
+function buildOrderTrackerHtml(o){
+  const stage = getOrderStageIndex(o);
+  const stages = [
+    {label:'Placed', icon:'fa-receipt'},
+    {label:'Preparing', icon:'fa-kitchen-set'},
+    {label:'On the way', icon:'fa-truck'},
+    {label:'Delivered', icon:'fa-circle-check'}
+  ];
+  const stagesHtml = stages.map((s,i)=>{
+    const isDone = i < stage || (i===stage && stage===3);
+    const isActive = i===stage && stage!==3;
+    const cls = isDone ? 'done' : (isActive ? 'active' : '');
+    const fillWidth = i===0 ? 0 : (i<=stage ? 100 : 0);
+    return `<div class="tracker-stage ${cls}">${i>0?`<div class="tracker-stage-line"><div class="tracker-stage-line-fill" style="width:${fillWidth}%"></div></div>`:''}<div class="tracker-stage-dot"><i class="fas ${s.icon}"></i></div><div class="tracker-stage-label">${s.label}</div></div>`;
+  }).join('');
+  const notes = [
+    'We\'ve received your order and it\'s in the queue.',
+    'Our chef is preparing your food right now.',
+    o.deliveryName ? `${o.deliveryName} is on the way with your order.` : 'Your order is out for delivery.',
+    'Delivered! Enjoy your meal.'
+  ];
+  return `<div class="delivery-tracker"><div class="tracker-stages">${stagesHtml}</div><div class="delivery-note"><i class="fas fa-circle-info"></i> ${notes[stage]}</div></div>`;
+}
 async function renderOrders(){
   const user=getCurrentUser(); const c=document.getElementById('ordersContainer');
   if(!user){ c.innerHTML=`<div style="text-align:center;padding:60px;color:var(--fg-muted)"><i class="fas fa-lock" style="font-size:2.5rem;opacity:0.2;display:block;margin-bottom:16px"></i><p style="font-size:1.1rem;margin-bottom:12px">Please sign in to view orders</p><button class="btn btn-primary" onclick="openAuthModal('login')"><i class="fas fa-sign-in-alt"></i> Sign In</button></div>`; return; }
@@ -1929,10 +1942,11 @@ async function renderOrders(){
     const deliveryLabel=o.deliveryName?`<div style="margin-top:8px;color:var(--fg);font-size:0.9rem"><strong>Delivery Boy:</strong> ${o.deliveryName}</div>`:'';
     const assignmentNote=o.assignmentNote?`<div style="margin-top:8px;color:var(--fg-muted);font-size:0.82rem">${o.assignmentNote}</div>`:'';
     const paymentLabel=`<div style="margin-top:8px;color:var(--fg);font-size:0.9rem"><strong>Payment:</strong> ${o.paymentMethod || 'COD'} <span style="color:var(--fg-muted)">(${o.paymentStatus || 'Pending'})</span></div>`;
-    const showTracker = o.deliveryId && o.status && o.status!=='delivered' && o.status!=='cancelled';
-    const trackerHtml = showTracker?`<div class="delivery-tracker"><div class="delivery-route"><div class="delivery-trackline"><span class="delivery-step"></span><span class="delivery-step"></span><span class="delivery-step"></span></div><div style="min-width:140px;color:var(--fg);font-size:0.95rem;font-weight:600;">Order route active</div></div><div class="delivery-note">Your order is moving through the route now. Track the steps below as it gets closer.</div></div>`:'';
+    const showTracker = o.status && o.status!=='cancelled';
+    const trackerHtml = showTracker?buildOrderTrackerHtml(o):'';
+    const statusSlug = String(o.status||'pending').toLowerCase().replace(/\s+/g,'-');
     return `<div class="order-card fade-in"><div class="order-id-col"><div class="order-id">#${o._id.slice(-6)}</div><div class="order-date">${d}</div></div>
-      <div><div style="font-weight:600;margin-bottom:4px">${o.items.map(i=>`${i.quantity}x ${i.name}`).join(', ')}</div>${deliveryLabel}${paymentLabel}${assignmentNote}${trackerHtml}<span class="order-status status-${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></div>
+      <div><div style="font-weight:600;margin-bottom:4px">${o.items.map(i=>`${i.quantity}x ${i.name}`).join(', ')}</div>${deliveryLabel}${paymentLabel}${assignmentNote}${trackerHtml}<span class="order-status status-${statusSlug}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></div>
       <div class="order-total-col"><div class="order-total">$${o.totalAmount.toFixed(2)}</div><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="downloadInvoice('${o._id}')"><i class="fas fa-file-pdf"></i> Download Invoice</button></div></div>`;
   }).join('');
 }

@@ -2012,6 +2012,21 @@ select.form-input { cursor: pointer; }
       socket.on("delivery-assigned", () => {
         loadOrders();
       });
+
+      // The kitchen marks an order as prepared, and the backend emits this
+      // event - but admin wasn't listening for it, so the dashboard never
+      // reflected the update until a manual refresh.
+      socket.on("order-prepared", () => {
+        loadOrders();
+      });
+
+      socket.on("payment-received", () => {
+        loadOrders();
+      });
+
+      socket.on("order-status-updated", () => {
+        loadOrders();
+      });
     });
 
     window.addEventListener('storage',(event)=>{ if(event.key?.startsWith('fv_')) renderApp(); });

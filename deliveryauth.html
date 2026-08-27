@@ -97,15 +97,22 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .delivery-route-card { margin-top: 16px; padding: 16px; border-radius: 18px; background: linear-gradient(135deg, rgba(232,87,42,0.08), rgba(45,138,78,0.08)); border: 1px solid rgba(45,138,78,0.18); }
 .route-label { font-weight: 700; margin-bottom: 12px; color: var(--fg); }
 .route-track { position: relative; height: 72px; padding: 12px; background: rgba(255,255,255,0.95); border-radius: 18px; border: 1px solid rgba(26,18,9,0.08); display: grid; grid-template-columns: minmax(90px,1fr) 48px minmax(90px,1fr); align-items: center; gap: 12px; }
-.route-track.delivered .route-progress { background: rgba(45,138,78,0.45); }
-.route-progress { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); height: 6px; background: rgba(26,18,9,0.12); border-radius: 999px; }
-.route-truck { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; animation: truckRide 3s ease-in-out infinite; }
-.route-truck.delivered { left: calc(100% - 54px); animation: none; background: var(--green); }
+/* Progress fill now reflects the REAL status (0% = pending/preparing, ~50% =
+   out for delivery, 100% = delivered) instead of looping forever. Transition
+   is fast (0.45s) so it snaps to the right spot as soon as status changes. */
+.route-progress { position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); height: 6px; background: rgba(26,18,9,0.12); border-radius: 999px; overflow: hidden; }
+.route-progress-fill { position: absolute; inset: 0; width: 0%; background: var(--accent); border-radius: 999px; transition: width .45s cubic-bezier(.4,0,.2,1), background-color .45s ease; }
+.route-track.delivered .route-progress-fill { background: var(--green); }
+.route-progress-fill.in-transit { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 10px, transparent 10px 20px); background-size: 28px 28px; animation: stripeMove .6s linear infinite; }
+@keyframes stripeMove { from { background-position: 0 0; } to { background-position: 28px 0; } }
+.route-truck { position: absolute; top: 50%; left: 10px; transform: translate(-50%,-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; transition: left .45s cubic-bezier(.4,0,.2,1), background-color .45s ease; }
+.route-truck.in-transit { animation: truckBounce .5s ease-in-out infinite; }
+.route-truck.delivered { background: var(--green); animation: none; }
+@keyframes truckBounce { 0%,100% { transform: translate(-50%,-52%); } 50% { transform: translate(-50%,-48%); } }
 .route-stop { position: relative; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--fg-muted); }
 .route-stop span { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .route-stop.end span { background: var(--green); }
 .route-status { margin-top: 12px; font-size: 0.9rem; color: var(--fg); }
-@keyframes truckRide { 0%,100% { left: 10px; } 50% { left: calc(100% - 54px); } }
 #map { height: 400px; width: 100%; border-radius: 12px; border: 1px solid var(--border); z-index: 1; }
 .location-status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: 600; background: var(--accent-light); color: var(--accent); margin-bottom: 12px; }
 .location-status.active { background: var(--green-light); color: var(--green); }
@@ -131,7 +138,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           <div id="deliveryMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);min-width:190px;overflow:hidden;z-index:200;">
             <div id="deliveryMenuName" style="padding:14px 16px;font-weight:600;border-bottom:1px solid var(--border);display:none;"></div>
             <button onclick="window.location.href='indexuser.html'" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);"><i class="fas fa-utensils" style="width:18px;"></i> User Site</button>
-            <button onclick="window.location.href='admin.html'" style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);"><i class="fas fa-shield-halved" style="width:18px;"></i> Admin Panel</button>
             <button id="installAppBtn" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);" onclick="installPwa()"><i class="fas fa-download" style="width:18px;"></i> Install App</button>
             <button id="deliveryMenuSignOut" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--accent);border-top:1px solid var(--border);" onclick="logout()"><i class="fas fa-right-from-bracket" style="width:18px;"></i> Sign Out</button>
           </div>
@@ -329,12 +335,25 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
       document.getElementById('deliveryOrdersContainer').innerHTML = renderOrders(filtered);
     }
 
+    // Turns the raw status string into a 0-100% route position + label, so
+    // the truck animation always matches reality instead of just looping.
+    function getRouteProgress(status){
+      const s = String(status || '').toLowerCase();
+      // pct is clamped to 6-94 so the 44px-wide truck icon always stays
+      // fully inside the track, even at the very start/end of the route.
+      if(s === 'delivered') return { pct: 94, label: 'Delivered successfully', inTransit: false, delivered: true };
+      if(s === 'out for delivery' || s === 'out-for-delivery') return { pct: 50, label: 'On the way to the customer', inTransit: true, delivered: false };
+      if(s === 'preparing') return { pct: 18, label: 'Status: Preparing', inTransit: false, delivered: false };
+      return { pct: 6, label: `Status: ${s.charAt(0).toUpperCase() + s.slice(1) || 'Pending'}`, inTransit: false, delivered: false };
+    }
+
     function renderOrders(orders){
       if(!orders.length) return '<p style="color:var(--fg-muted)">No orders assigned yet.</p>';
       return orders.map(o => {
-        const deliveredClass = o.status === 'delivered' ? ' delivered' : '';
-        const routeLabel = o.status === 'delivered' ? 'Delivery complete' : 'Live delivery route';
-        const routeStatus = o.status === 'delivered' ? 'Delivered successfully' : `Status: ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}`;
+        const progress = getRouteProgress(o.status);
+        const deliveredClass = progress.delivered ? ' delivered' : '';
+        const transitClass = progress.inTransit ? ' in-transit' : '';
+        const routeLabel = progress.delivered ? 'Delivery complete' : 'Live delivery route';
         return `<div class="order-card fade-in" style="margin-bottom:12px;">
           <div class="order-id-col">
             <div class="order-id" onclick="openOrderDetails('${o.id}')" style="cursor:pointer;">#${String(o.id).padStart(4,'0')}</div>
@@ -348,12 +367,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
             <div class="delivery-route-card">
               <div class="route-label">${routeLabel}</div>
               <div class="route-track${deliveredClass}">
-                <div class="route-progress"></div>
-                <div class="route-truck${deliveredClass}"><i class="fas fa-truck"></i></div>
+                <div class="route-progress"><div class="route-progress-fill${transitClass}" style="width:${progress.pct}%"></div></div>
+                <div class="route-truck${deliveredClass}${transitClass}" style="left:${progress.pct}%"><i class="fas fa-truck"></i></div>
                 <div class="route-stop start"><span></span>Kitchen</div>
                 <div class="route-stop end"><span></span>Customer</div>
               </div>
-              <div class="route-status">${routeStatus}</div>
+              <div class="route-status">${progress.label}</div>
             </div>
           </div>
           <div class="order-total-col">
