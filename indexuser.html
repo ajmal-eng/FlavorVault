@@ -505,9 +505,9 @@ select.form-input { cursor: pointer; }
 .tracker-stage-label { font-size:0.72rem; font-weight:600; color: var(--fg-muted); transition: color .35s ease; }
 .tracker-stage.done .tracker-stage-dot { background: var(--green); border-color: var(--green); color:#fff; }
 .tracker-stage.done .tracker-stage-label { color: var(--green); }
-.tracker-stage.active .tracker-stage-dot { background: var(--accent); border-color: var(--accent); color:#fff; transform: scale(1.15); animation: trackerPulse 1s ease-in-out infinite; }
+.tracker-stage.active .tracker-stage-dot { background: var(--accent); border-color: var(--accent); color:#fff; transform: scale(1.06); animation: trackerPulse 1.8s ease-in-out infinite; }
 .tracker-stage.active .tracker-stage-label { color: var(--accent); font-weight:700; }
-@keyframes trackerPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,87,42,0.35); } 50% { box-shadow: 0 0 0 6px rgba(232,87,42,0); } }
+@keyframes trackerPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,87,42,0.25); } 50% { box-shadow: 0 0 0 3px rgba(232,87,42,0); } }
 .delivery-note { margin-top:14px; padding:12px 16px; background: #fff; border: 1px solid var(--border); border-radius:16px; color: var(--fg-muted); font-size:0.88rem; line-height:1.5; display:flex; align-items:center; gap:8px; }
 .delivery-note i { color: var(--accent); }
 
@@ -618,10 +618,6 @@ select.form-input { cursor: pointer; }
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;padding:12px;border:1.5px solid #ddd;border-radius:8px;transition:all 0.3s">
           <input type="radio" name="paymentMethod" value="COD" checked style="cursor:pointer">
           <span>Cash On Delivery</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;padding:12px;border:1.5px solid #ddd;border-radius:8px;transition:all 0.3s">
-          <input type="radio" name="paymentMethod" value="Online" style="cursor:pointer">
-          <span>Online Payment</span>
         </label>
       </div>
     </div>
@@ -1152,61 +1148,10 @@ async function submitCheckout() {
     paymentMethod: paymentMethod
   };
 
-  if (paymentMethod === 'COD') {
-    await placeOrderInBackend({ ...orderPayload, paymentStatus: 'Pending' });
-    return;
-  }
-
-  // Online payment: show a UPI "scan to pay" QR code, same pattern the
-  // delivery site already uses for its own payment collection.
-  await showUserPaymentQr(orderPayload, totalAmount);
-}
-
-async function showUserPaymentQr(orderPayload, amount) {
-  let upiId;
-  try {
-    const res = await fetch(`${window.FLAVORVAULT_API_BASE}/api/payment/upi-id`);
-    const data = await res.json();
-    if (!data.success) {
-      showToast(data.message || 'Online payment is not set up yet - choose Cash on Delivery instead', 'error');
-      return;
-    }
-    upiId = data.upiId;
-  } catch (err) {
-    console.error('FETCH UPI ID ERROR:', err);
-    showToast('Cannot connect to backend', 'error');
-    return;
-  }
-
-  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=FlavorVault&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('FlavorVault order')}`;
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiUri)}`;
-
-  let modal = document.getElementById('userPaymentQrModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'userPaymentQrModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:28px;max-width:340px;width:100%;text-align:center;">
-      <h3 style="margin-bottom:6px;">Scan to Pay</h3>
-      <p style="color:var(--fg-muted);margin-bottom:16px;">₹${amount.toFixed(2)}</p>
-      <img src="${qrImageUrl}" alt="Payment QR" style="width:100%;max-width:260px;border-radius:12px;border:1px solid var(--border);">
-      <p style="font-size:0.8rem;color:var(--fg-muted);margin:14px 0;">After paying, tap the button below. Your order will show as payment-pending until the restaurant confirms it was received.</p>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" id="userPaidConfirmBtn">I've Paid</button>
-      <button class="btn btn-outline" style="width:100%;" id="userPaidCancelBtn">Cancel</button>
-    </div>
-  `;
-
-  document.getElementById('userPaidCancelBtn').onclick = () => {
-    modal.remove();
-    showToast('Payment cancelled - order was not placed', 'info');
-  };
-  document.getElementById('userPaidConfirmBtn').onclick = async () => {
-    modal.remove();
-    await placeOrderInBackend({ ...orderPayload, paymentStatus: 'Pending' });
-  };
+  // Online payment removed from the user site - all orders are Cash On
+  // Delivery. (The delivery boy app still has its own separate UPI QR
+  // feature for collecting payment on delivery - that is untouched.)
+  await placeOrderInBackend({ ...orderPayload, paymentStatus: 'Pending' });
 }
 
 async function placeOrderInBackend(payload) {
@@ -2267,6 +2212,12 @@ window.addEventListener('load', () => {
   socket = io(window.FLAVORVAULT_API_BASE);
   socket.on("order-status-updated", data => {
     showToast(`Order ${data.status}`, "success");
+    renderOrders();
+  });
+  // Fires the moment the chef taps "Mark as Prepared", so the tracker
+  // updates live even for the split-second before the status field
+  // itself finishes updating on the backend.
+  socket.on("order-prepared", () => {
     renderOrders();
   });
 });

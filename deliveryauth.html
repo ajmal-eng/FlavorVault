@@ -105,9 +105,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .route-track.delivered .route-progress-fill { background: var(--green); }
 .route-progress-fill.in-transit { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 10px, transparent 10px 20px); background-size: 28px 28px; animation: stripeMove .6s linear infinite; }
 @keyframes stripeMove { from { background-position: 0 0; } to { background-position: 28px 0; } }
-.route-truck { position: absolute; top: 50%; left: 10px; transform: translate(-50%,-50%); width: 44px; height: 34px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; transition: left .45s cubic-bezier(.4,0,.2,1), background-color .45s ease; }
+.route-truck { position: absolute; top: 50%; left: 10px; transform: translate(-50%,-50%); width: 54px; height: 42px; background: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.15rem; box-shadow: 0 4px 10px rgba(232,87,42,0.35); transition: left .45s cubic-bezier(.4,0,.2,1), background-color .45s ease; }
 .route-truck.in-transit { animation: truckBounce .5s ease-in-out infinite; }
-.route-truck.delivered { background: var(--green); animation: none; }
+.route-truck.delivered { background: var(--green); animation: none; box-shadow: 0 4px 10px rgba(45,138,78,0.35); }
 @keyframes truckBounce { 0%,100% { transform: translate(-50%,-52%); } 50% { transform: translate(-50%,-48%); } }
 .route-stop { position: relative; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--fg-muted); }
 .route-stop span { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; }
