@@ -7,6 +7,16 @@ const userSchema = new mongoose.Schema(
         required: true
     },
 
+    // This was missing entirely, which meant every username typed at sign-up
+    // was silently discarded by Mongoose (it drops any field not declared in
+    // the schema) - so there was never anything in the database to match
+    // against, and logging in with a username could never work.
+    username: {
+        type: String,
+        unique: true,
+        sparse: true // allows many users to have no username without unique-index conflicts
+    },
+
     email: {
         type: String,
         required: true,

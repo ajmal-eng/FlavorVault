@@ -2042,6 +2042,9 @@ function saveEdit() {
 // NAVIGATION & UTILS
 // ============================================================
 function navigate(page){
+  // Close the mobile dropdown menu as soon as any item is tapped, before
+  // any early-return branches, so Admin/Delivery links close it too.
+  document.getElementById('navLinks')?.classList.remove('mobile-open');
   if(page==='admin'){ goToAdmin(); return; }
   if(page==='delivery'){ goToDelivery(); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -2200,6 +2203,15 @@ function toggleMobileNav(){
   const l=document.getElementById('navLinks');
   l.classList.toggle('mobile-open');
 }
+// Also close the dropdown if the user taps anywhere outside it (or outside
+// the hamburger button), matching normal app menu behavior.
+document.addEventListener('click', e => {
+  const navLinks = document.getElementById('navLinks');
+  const toggleBtn = document.querySelector('.mobile-toggle');
+  if(!navLinks || !navLinks.classList.contains('mobile-open')) return;
+  if(navLinks.contains(e.target) || toggleBtn?.contains(e.target)) return;
+  navLinks.classList.remove('mobile-open');
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));if(document.getElementById('cartSidebar').classList.contains('open'))toggleCart();}
 });
