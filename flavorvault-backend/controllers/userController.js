@@ -19,21 +19,14 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // Some networks (school/college-managed devices, certain antivirus
-  // software) intercept HTTPS/SMTP connections and re-sign them with
-  // their own certificate, which Node doesn't trust by default and causes
-  // "self-signed certificate in certificate chain" errors. This disables
-  // certificate verification for this connection only, which is fine for
-  // local development but should NOT be used in a real production deployment.
   tls: {
     rejectUnauthorized: false
-  }
+  },
+  family: 4, // forces IPv4 - fixes ENETUNREACH/hangs on Render
+  connectionTimeout: 15000, // fail fast instead of hanging ~120s
+  greetingTimeout: 15000,
+  socketTimeout: 15000
 });
-
-const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "No account found with this email" });
