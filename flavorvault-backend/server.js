@@ -1,6 +1,15 @@
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Render's network can't route outbound IPv6 to some hosts (like Gmail's
+// SMTP servers), causing ENETUNREACH even when a connection explicitly
+// asks for IPv4. Forcing Node's global DNS resolution to prefer IPv4
+// results for every lookup in the process fixes this at the root, since
+// per-connection "family" options aren't reliably honored by every
+// library (e.g. nodemailer).
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
