@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const Order = require("../models/Order");
 const nodemailer = require("nodemailer");
+const dns = require("dns").promises;
 
 function generateReferralCode(name){
   const b=(name||"USER").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,5)||"USER";
@@ -13,20 +14,52 @@ function generateReferralCode(name){
 // Set EMAIL_USER and EMAIL_PASS in your .env file (a Gmail address + an
 // "App Password", not your normal Gmail password - generate one at
 // https://myaccount.google.com/apppasswords) for this to actually send mail.
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  family: 4, // forces IPv4 - fixes ENETUNREACH/hangs on Render
-  connectionTimeout: 15000, // fail fast instead of hanging ~120s
-  greetingTimeout: 15000,
-  socketTimeout: 15000
-});
+//
+// Render's outbound network has no working route to Gmail's IPv6
+// addresses, so any connection that resolves "smtp.gmail.com" to an
+// AAAA/IPv6 record fails with ENETUNREACH - this happened even with
+// nodemailer's "family: 4" option and Node's global
+// dns.setDefaultResultOrder("ipv4first"), because nodemailer's own SMTP
+// connection logic doesn't reliably respect either. The only fix that
+// actually works is resolving the hostname to a plain IPv4 address
+// ourselves (dns.resolve4 only ever returns IPv4 records, so there's
+// nothing left to fall back to IPv6) and connecting to that IP directly,
+// with "servername" kept so TLS still validates against the real hostname.
+async function getTransporter() {
+  let host = "smtp.gmail.com";
+  try {
+    const addresses = await dns.resolve4("smtp.gmail.com");
+    if (addresses && addresses.length) {
+      host = addresses[Math.floor(Math.random() * addresses.length)];
+    }
+  } catch (e) {
+    console.error("DNS resolve4 for smtp.gmail.com failed, falling back to hostname:", e.message);
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    },
+    // Some networks (school/college-managed devices, certain antivirus
+    // software) intercept HTTPS/SMTP connections and re-sign them with
+    // their own certificate, which Node doesn't trust by default and causes
+    // "self-signed certificate in certificate chain" errors. This disables
+    // certificate verification for this connection only, which is fine for
+    // local development but should NOT be used in a real production deployment.
+    tls: {
+      rejectUnauthorized: false,
+      servername: "smtp.gmail.com"
+    },
+    family: 4, // forces IPv4 - fixes ENETUNREACH/hangs on Render
+    connectionTimeout: 15000, // fail fast instead of hanging ~120s
+    greetingTimeout: 15000,
+    socketTimeout: 15000
+  });
+}
 
 const forgotPassword = async (req, res) => {
   try {
@@ -46,6 +79,7 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     try {
+      const transporter = await getTransporter();
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
