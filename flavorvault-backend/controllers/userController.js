@@ -28,6 +28,11 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 15000
 });
 
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ success: false, message: "No account found with this email" });
     }
