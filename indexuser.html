@@ -594,6 +594,19 @@ select.form-input { cursor: pointer; }
   </div>
 </div>
 
+<!-- Rate Your Order Modal - shown right after an order is placed -->
+<div class="modal-overlay" id="rateOrderModal">
+  <div class="modal" style="width:480px">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:6px">Rate your order</h3>
+    <p style="color:var(--fg-muted);font-size:0.88rem;margin-bottom:20px">Let us know how these were - it helps other diners too.</p>
+    <div id="rateOrderItems"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('rateOrderModal')">Skip</button>
+      <button class="btn btn-primary" style="flex:1" onclick="submitOrderRatings()"><i class="fas fa-paper-plane"></i> Submit Ratings</button>
+    </div>
+  </div>
+</div>
+
 <!-- Checkout Modal -->
 <div class="modal-overlay" id="checkoutModal">
   <div class="modal">
@@ -681,9 +694,12 @@ select.form-input { cursor: pointer; }
         <p>Fresh, flavorful, and crafted with passion</p>
       </div>
       <div class="search-bar">
-        <input type="text" class="search-input" placeholder="Search dishes..." id="searchInput" oninput="renderFoodGrid()">
+        <input type="text" class="search-input" placeholder="Search dishes... (try 'AI Mode' for something spicy and cheap)" id="searchInput" oninput="renderFoodGrid()">
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('searchInput').value='';renderFoodGrid()">
           <i class="fas fa-times"></i>
+        </button>
+        <button class="btn btn-outline btn-sm" id="aiModeToggle" onclick="toggleAiMode()" title="AI Mode: understands phrases like 'something spicy and cheap' or 'best desserts', not just exact matches">
+          <i class="fas fa-wand-magic-sparkles"></i> AI Mode
         </button>
       </div>
       <div class="cat-pills" id="catPills"></div>
@@ -1178,9 +1194,70 @@ async function placeOrderInBackend(payload) {
     closeCheckoutModal();
     showToast(`Order placed successfully with ${payload.paymentMethod}`, "success");
     navigate("orders");
+    if (data.order) openRateOrderModal(data.order);
   } catch (error) {
     console.error(error);
     showToast("Cannot connect to backend", "error");
+  }
+}
+
+// ---- Rate items after ordering ----
+let pendingRatingOrder = null; // { orderId, items: [{foodId,name,rating}] }
+
+function openRateOrderModal(order){
+  pendingRatingOrder = {
+    orderId: order._id,
+    items: (order.items || []).map(it => ({ foodId: String(it.foodId), name: it.name, rating: 0 }))
+  };
+  if (!pendingRatingOrder.items.length) return;
+
+  const container = document.getElementById('rateOrderItems');
+  container.innerHTML = pendingRatingOrder.items.map((item, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <span style="font-weight:600">${item.name}</span>
+      <div class="star-picker" data-item="${i}">
+        ${[1,2,3,4,5].map(n => `<i class="fas fa-star star-pick" data-value="${n}" onclick="setItemRating(${i},${n})" style="cursor:pointer;color:var(--border);margin-left:3px;font-size:1.1rem"></i>`).join('')}
+      </div>
+    </div>`).join('');
+
+  openModal('rateOrderModal');
+}
+
+function setItemRating(itemIndex, value){
+  if (!pendingRatingOrder) return;
+  pendingRatingOrder.items[itemIndex].rating = value;
+  const picker = document.querySelector(`.star-picker[data-item="${itemIndex}"]`);
+  if (!picker) return;
+  picker.querySelectorAll('.star-pick').forEach(star => {
+    const starValue = Number(star.dataset.value);
+    star.style.color = starValue <= value ? '#f59e0b' : 'var(--border)';
+  });
+}
+
+async function submitOrderRatings(){
+  if (!pendingRatingOrder) { closeModal('rateOrderModal'); return; }
+  const toRate = pendingRatingOrder.items.filter(it => it.rating > 0);
+
+  if (!toRate.length) {
+    showToast('Pick at least one star to submit, or tap Skip', 'error');
+    return;
+  }
+
+  try {
+    await Promise.all(toRate.map(item =>
+      fetch(`${window.FLAVORVAULT_API_BASE}/api/foods/${item.foodId}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: item.rating, orderId: pendingRatingOrder.orderId })
+      })
+    ));
+    showToast('Thanks for rating your order!', 'success');
+    closeModal('rateOrderModal');
+    pendingRatingOrder = null;
+    loadFoods(); // refresh displayed ratings on the food cards
+  } catch (error) {
+    console.error(error);
+    showToast('Could not submit ratings - please try again', 'error');
   }
 }
 function updateOrderStatus(oid,s){
@@ -1332,7 +1409,7 @@ function renderAuthStep(){
       <button class="back-link" onclick="authMode='login';renderAuthStep()"><i class="fas fa-arrow-left"></i> Back to Sign In</button>
       <h3>Reset Password</h3>
       <p style="color:var(--fg-muted);font-size:0.92rem;margin-bottom:20px">Enter your email and we'll send you a 6-digit verification code to reset your password.</p>
-      <div class="form-group"><label>Email Address</label><input class="form-input" id="resetEmailInput" type="email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Email Address</label><input class="form-input" id="resetEmailInput" type="email" autocomplete="email" placeholder="you@example.com"></div>
       <div id="authError" class="form-error" style="display:none"></div>
       <div class="modal-actions">
         <button class="btn btn-primary" style="flex:1" onclick="handleSendResetCode()"><i class="fas fa-paper-plane"></i> Send Reset Code</button>
@@ -1348,12 +1425,12 @@ function renderAuthStep(){
       <p style="text-align:center;color:var(--fg-muted);font-size:0.9rem;margin-bottom:4px">We sent a 6-digit code to</p>
       <p style="text-align:center;font-weight:700;color:var(--fg);font-size:0.95rem;margin-bottom:16px">${resetEmail}</p>
       <div class="code-boxes">
-        <input class="code-box" type="text" maxlength="1" id="c0" oninput="codeInput(0)" onkeydown="codeKey(event,0)">
-        <input class="code-box" type="text" maxlength="1" id="c1" oninput="codeInput(1)" onkeydown="codeKey(event,1)">
-        <input class="code-box" type="text" maxlength="1" id="c2" oninput="codeInput(2)" onkeydown="codeKey(event,2)">
-        <input class="code-box" type="text" maxlength="1" id="c3" oninput="codeInput(3)" onkeydown="codeKey(event,3)">
-        <input class="code-box" type="text" maxlength="1" id="c4" oninput="codeInput(4)" onkeydown="codeKey(event,4)">
-        <input class="code-box" type="text" maxlength="1" id="c5" oninput="codeInput(5)" onkeydown="codeKey(event,5)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c0" autocomplete="one-time-code" oninput="codeInput(0)" onkeydown="codeKey(event,0)" onpaste="codePaste(event,0)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c1" autocomplete="one-time-code" oninput="codeInput(1)" onkeydown="codeKey(event,1)" onpaste="codePaste(event,1)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c2" autocomplete="one-time-code" oninput="codeInput(2)" onkeydown="codeKey(event,2)" onpaste="codePaste(event,2)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c3" autocomplete="one-time-code" oninput="codeInput(3)" onkeydown="codeKey(event,3)" onpaste="codePaste(event,3)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c4" autocomplete="one-time-code" oninput="codeInput(4)" onkeydown="codeKey(event,4)" onpaste="codePaste(event,4)">
+        <input class="code-box" type="text" inputmode="numeric" maxlength="1" id="c5" autocomplete="one-time-code" oninput="codeInput(5)" onkeydown="codeKey(event,5)" onpaste="codePaste(event,5)">
       </div>
       <div id="authError" class="form-error" style="display:none;text-align:center"></div>
       <div class="modal-actions">
@@ -1371,8 +1448,8 @@ function renderAuthStep(){
       </div>
       <h3 style="text-align:center">Set New Password</h3>
       <p style="text-align:center;color:var(--fg-muted);font-size:0.9rem;margin-bottom:20px">Choose a strong password for your account</p>
-      <div class="form-group"><label>New Password</label><input class="form-input" id="newPass1" type="password" placeholder="Min 6 characters"></div>
-      <div class="form-group"><label>Confirm Password</label><input class="form-input" id="newPass2" type="password" placeholder="Re-enter password"></div>
+      <div class="form-group"><label>New Password</label><input class="form-input" id="newPass1" type="password" autocomplete="new-password" placeholder="Min 6 characters"></div>
+      <div class="form-group"><label>Confirm Password</label><input class="form-input" id="newPass2" type="password" autocomplete="new-password" placeholder="Re-enter password"></div>
       <div id="authError" class="form-error" style="display:none"></div>
       <div class="modal-actions">
         <button class="btn btn-green" style="flex:1" onclick="handleSetNewPassword()"><i class="fas fa-save"></i> Reset Password</button>
@@ -1402,6 +1479,23 @@ function codeKey(e,i){
   if(e.key==='Backspace' && !document.getElementById('c'+i).value && i>0){
     document.getElementById('c'+(i-1))?.focus();
   }
+}
+// Lets the user paste a full 6-digit code (copied from the reset email)
+// into any of the boxes and have it auto-fill all of them, instead of
+// having to type each digit individually.
+function codePaste(e,i){
+  e.preventDefault();
+  const pasted=(e.clipboardData||window.clipboardData).getData('text');
+  const digits=pasted.replace(/[^0-9]/g,'').slice(0,6);
+  if(!digits) return;
+  for(let j=0;j<digits.length && (i+j)<6;j++){
+    const box=document.getElementById('c'+(i+j));
+    if(box) box.value=digits[j];
+  }
+  const nextIndex=Math.min(i+digits.length,5);
+  document.getElementById('c'+nextIndex)?.focus();
+  // Auto-submit once all 6 digits are filled in.
+  if(getEnteredCode().length===6) handleVerifyCode();
 }
 function getEnteredCode(){
   let code='';
@@ -1712,8 +1806,8 @@ async function loadFoods() {
       badge: food.badge || "",
       trending: !!food.trending,
       available: food.available !== false,
-      rating: 4.5,
-      reviews: 0
+      rating: typeof food.avgRating === 'number' ? food.avgRating : 4.5,
+      reviews: food.reviewCount || 0
     }));
 
     DB.set("foods", foods);
@@ -1746,12 +1840,76 @@ function updateTrendingHero(foods){
     if (imgEl) imgEl.src = normalizeFlavorImage(trendingFood.img);
   }
 }
+// ---- AI Mode: free, instant "smart" search - no external API needed.
+// Scores every food by how well it matches the query (name/category/desc
+// word overlap) plus a few natural-language hints ("cheap", "spicy",
+// "healthy", "best"/"popular" -> favors higher-rated items), instead of
+// only matching if the exact substring is typed.
+let aiModeOn = false;
+function toggleAiMode(){
+  aiModeOn = !aiModeOn;
+  const btn = document.getElementById('aiModeToggle');
+  if(btn){
+    btn.classList.toggle('btn-outline', !aiModeOn);
+    btn.classList.toggle('btn-primary', aiModeOn);
+  }
+  renderFoodGrid();
+}
+
+const AI_CATEGORY_SYNONYMS = {
+  'drink':'Drinks','drinks':'Drinks','beverage':'Drinks','beverages':'Drinks',
+  'dessert':'Desserts','desserts':'Desserts','sweet':'Desserts','sweets':'Desserts',
+  'appetizer':'Appetizers','appetizers':'Appetizers','starter':'Appetizers','starters':'Appetizers',
+  'main':'Main Course','mains':'Main Course','entree':'Main Course','entrees':'Main Course'
+};
+
+function aiScoreFood(f, queryWords, wantsCheap, wantsSpicy, wantsPopular){
+  let score = 0;
+  const name = f.name.toLowerCase();
+  const category = f.category.toLowerCase();
+  const desc = (f.desc || '').toLowerCase();
+
+  queryWords.forEach(word => {
+    if(!word) return;
+    if(name.includes(word)) score += 10;
+    if(AI_CATEGORY_SYNONYMS[word] && f.category === AI_CATEGORY_SYNONYMS[word]) score += 8;
+    else if(category.includes(word)) score += 6;
+    if(desc.includes(word)) score += 3;
+  });
+
+  if(wantsCheap) score += Math.max(0, 25 - f.price); // cheaper items score higher
+  if(wantsSpicy && f.badge === 'spicy') score += 10;
+  if(wantsPopular) score += (f.rating || 0) * 3 + Math.log((f.reviews || 0) + 1);
+
+  return score;
+}
+
+function aiSearchFoods(foods, query){
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const wantsCheap = /cheap|budget|affordable|inexpensive/.test(query);
+  const wantsSpicy = /spicy|hot|fiery/.test(query);
+  const wantsPopular = /best|popular|top|recommend|favou?rite/.test(query);
+
+  return foods
+    .map(f => ({ f, score: aiScoreFood(f, words, wantsCheap, wantsSpicy, wantsPopular) }))
+    .filter(x => x.score > 0)
+    .sort((a,b) => b.score - a.score)
+    .map(x => x.f);
+}
+
 function renderFoodGrid(){
   const foods=DB.get('foods')||[];
-  const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const search=(document.getElementById('searchInput')?.value||'').trim();
   let filtered=foods;
   if(activeCategory!=='All') filtered=filtered.filter(f=>f.category===activeCategory);
-  if(search) filtered=filtered.filter(f=>f.name.toLowerCase().includes(search)||f.category.toLowerCase().includes(search)||f.desc.toLowerCase().includes(search));
+  if(search){
+    if(aiModeOn){
+      filtered=aiSearchFoods(filtered, search);
+    } else {
+      const s=search.toLowerCase();
+      filtered=filtered.filter(f=>f.name.toLowerCase().includes(s)||f.category.toLowerCase().includes(s)||f.desc.toLowerCase().includes(s));
+    }
+  }
   const grid=document.getElementById('foodGrid');
   if(!filtered.length){ grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--fg-muted)"><i class="fas fa-search" style="font-size:2.5rem;opacity:0.2;display:block;margin-bottom:16px"></i>No dishes found</div>`; return; }
   grid.innerHTML=filtered.map((f,i)=>{
