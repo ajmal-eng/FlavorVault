@@ -41,6 +41,19 @@ const foodSchema = new mongoose.Schema({
   trending: {
     type: Boolean,
     default: false
+  },
+
+  // Real ratings submitted by users after ordering this item. We store the
+  // running sum and count (rather than an array of every rating) so
+  // computing the average is a cheap O(1) read instead of pulling every
+  // rating document every time the menu loads.
+  ratingSum: {
+    type: Number,
+    default: 0
+  },
+  ratingCount: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

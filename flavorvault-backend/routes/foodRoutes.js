@@ -8,7 +8,8 @@ const {
   addFood,
   getFoods,
   deleteFood,
-  updateFood
+  updateFood,
+  rateFood
 } = require("../controllers/foodController");
 
 // Cloudinary config (reads credentials from environment variables — never
@@ -62,5 +63,6 @@ router.post("/add", addFood);
 router.get("/", getFoods);
 router.delete("/:id", deleteFood);
 router.put("/:id", updateFood);
+router.post("/:id/rate", rateFood);
 
 module.exports = router;

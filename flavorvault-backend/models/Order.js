@@ -91,6 +91,13 @@ const orderSchema = new mongoose.Schema({
   prepared: {
     type: Boolean,
     default: false
+  },
+
+  // Food IDs from this order that the user has already submitted a rating
+  // for - prevents rating the same order's item twice.
+  ratedFoodIds: {
+    type: [String],
+    default: []
   }
 
 }, {
