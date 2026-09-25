@@ -1,8 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const Order = require("../models/Order");
-const nodemailer = require("nodemailer");
-const dns = require("dns").promises;
 
 function generateReferralCode(name){
   const b=(name||"USER").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,5)||"USER";
@@ -11,54 +9,40 @@ function generateReferralCode(name){
   return `${b}${y}-${r}`;
 }
 
-// Set EMAIL_USER and EMAIL_PASS in your .env file (a Gmail address + an
-// "App Password", not your normal Gmail password - generate one at
-// https://myaccount.google.com/apppasswords) for this to actually send mail.
+// Render blocks/can't complete outbound SMTP connections (port 465/587)
+// entirely - every attempt to reach Gmail's SMTP servers directly, over
+// either IPv6 or IPv4, timed out. Regular HTTPS (port 443) is never
+// blocked, so instead of SMTP we send the reset email through Brevo's
+// transactional email HTTP API.
 //
-// Render's outbound network has no working route to Gmail's IPv6
-// addresses, so any connection that resolves "smtp.gmail.com" to an
-// AAAA/IPv6 record fails with ENETUNREACH - this happened even with
-// nodemailer's "family: 4" option and Node's global
-// dns.setDefaultResultOrder("ipv4first"), because nodemailer's own SMTP
-// connection logic doesn't reliably respect either. The only fix that
-// actually works is resolving the hostname to a plain IPv4 address
-// ourselves (dns.resolve4 only ever returns IPv4 records, so there's
-// nothing left to fall back to IPv6) and connecting to that IP directly,
-// with "servername" kept so TLS still validates against the real hostname.
-async function getTransporter() {
-  let host = "smtp.gmail.com";
-  try {
-    const addresses = await dns.resolve4("smtp.gmail.com");
-    if (addresses && addresses.length) {
-      host = addresses[Math.floor(Math.random() * addresses.length)];
-    }
-  } catch (e) {
-    console.error("DNS resolve4 for smtp.gmail.com failed, falling back to hostname:", e.message);
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+// Setup (one-time):
+// 1. Create a free account at https://www.brevo.com
+// 2. Go to Settings -> SMTP & API -> API Keys, create a new API key.
+// 3. Go to Senders, add and verify the email address you want to send
+//    from (click the confirmation link Brevo emails you).
+// 4. On Render, set these environment variables:
+//      BREVO_API_KEY   = the API key from step 2
+//      EMAIL_USER      = the verified sender address from step 3
+async function sendResetEmail(toEmail, code) {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "api-key": process.env.BREVO_API_KEY
     },
-    // Some networks (school/college-managed devices, certain antivirus
-    // software) intercept HTTPS/SMTP connections and re-sign them with
-    // their own certificate, which Node doesn't trust by default and causes
-    // "self-signed certificate in certificate chain" errors. This disables
-    // certificate verification for this connection only, which is fine for
-    // local development but should NOT be used in a real production deployment.
-    tls: {
-      rejectUnauthorized: false,
-      servername: "smtp.gmail.com"
-    },
-    family: 4, // forces IPv4 - fixes ENETUNREACH/hangs on Render
-    connectionTimeout: 15000, // fail fast instead of hanging ~120s
-    greetingTimeout: 15000,
-    socketTimeout: 15000
+    body: JSON.stringify({
+      sender: { email: process.env.EMAIL_USER, name: "FlavorVault" },
+      to: [{ email: toEmail }],
+      subject: "Your FlavorVault password reset code",
+      textContent: `Your password reset code is ${code}. It expires in 5 minutes.`
+    })
   });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Brevo API error (${response.status}): ${errorBody}`);
+  }
 }
 
 const forgotPassword = async (req, res) => {
@@ -79,13 +63,7 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     try {
-      const transporter = await getTransporter();
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "Your FlavorVault password reset code",
-        text: `Your password reset code is ${code}. It expires in 5 minutes.`
-      });
+      await sendResetEmail(email, code);
     } catch (mailError) {
       console.error("EMAIL SEND ERROR:", mailError.message);
       return res.status(500).json({ success: false, message: "Could not send reset email. Check backend EMAIL_USER/EMAIL_PASS configuration." });
