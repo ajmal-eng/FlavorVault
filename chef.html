@@ -174,13 +174,13 @@
   </style>
 </head>
 <body>
-  <header>
+  <header style="position:relative;">
     <i class="fas fa-kitchen-set"></i>
     <h1>Kitchen</h1>
     <span class="queue-badge" id="queueBadge">0 waiting</span>
-    <div id="chefMenuWrap" style="position:relative;margin-left:auto;">
+    <div id="chefMenuWrap" style="margin-left:auto;">
       <button id="chefMenuBtn" onclick="event.stopPropagation(); toggleChefMenu();" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;"><i class="fas fa-bars"></i> Menu</button>
-      <div id="chefMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;color:var(--fg);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);min-width:180px;overflow:hidden;z-index:200;">
+      <div id="chefMenuDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;color:var(--fg);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);min-width:180px;max-width:calc(100vw - 24px);overflow:hidden;z-index:200;">
         <button id="installAppBtn" style="display:none;width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--fg);" onclick="installPwa();closeChefMenu();"><i class="fas fa-download" style="width:18px;"></i> Install App</button>
         <button style="width:100%;text-align:left;padding:12px 16px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:0.9rem;color:var(--accent);border-top:1px solid var(--border);" onclick="chefLogout();closeChefMenu();"><i class="fas fa-right-from-bracket" style="width:18px;"></i> Log Out</button>
       </div>

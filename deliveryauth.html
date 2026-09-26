@@ -89,6 +89,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
 .admin-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
 .admin-card h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; }
 .order-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; }
+/* Without this, a grid item won't shrink below its content's natural width
+   (long address text, a wide row of buttons), so the whole card silently
+   grows wider than the screen and content gets clipped off the edge on
+   mobile instead of wrapping. */
+.order-card > div { min-width: 0; }
+.order-card .delivery-route-card, .order-card [style*="flex-wrap"] { max-width: 100%; }
 .order-id-col { text-align: center; }
 .order-id { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 900; color: var(--accent); }
 .order-date { font-size: 0.75rem; color: var(--fg-muted); }
@@ -384,7 +390,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--f
           </div>
           <div style="font-size:0.9rem;color:var(--fg);line-height:1.6;">
             ${(o.items || []).map(i => `${i.qty}x ${i.name}`).join(' · ')}
-            <div style="margin-top:6px;color:var(--fg-muted);font-size:0.85rem;">
+            <div style="margin-top:6px;color:var(--fg-muted);font-size:0.85rem;overflow-wrap:break-word;">
               <i class="fas fa-location-dot"></i> ${o.address || 'Address not available'}
             </div>
             <div class="delivery-route-card">
