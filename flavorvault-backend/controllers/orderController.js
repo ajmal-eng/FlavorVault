@@ -138,16 +138,29 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+const DeliveryBoy = require("../models/DeliveryBoy");
+
 const assignDeliveryBoy = async (req, res) => {
   try {
 
     const { deliveryBoyId, deliveryBoyName } = req.body;
 
+    // Look the phone number up from the DeliveryBoy account itself rather
+    // than trusting the request body for it, so every caller that already
+    // sends deliveryBoyId/deliveryBoyName automatically gets the phone
+    // number populated too without needing to be updated separately.
+    let deliveryBoyPhone = "";
+    if (deliveryBoyId) {
+      const boy = await DeliveryBoy.findById(deliveryBoyId).select("phone");
+      if (boy) deliveryBoyPhone = boy.phone || "";
+    }
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       {
         deliveryBoyId,
-        deliveryBoyName
+        deliveryBoyName,
+        deliveryBoyPhone
       },
       { returnDocument: 'after' }
     );

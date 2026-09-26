@@ -489,6 +489,7 @@ select.form-input { cursor: pointer; }
 .delivery-map-status { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; background: var(--accent-light); color: var(--accent); margin-bottom: 8px; }
 .delivery-map-status.active { background: var(--green-light); color: var(--green); }
 .delivery-map-status .pulse { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulseDot 1.5s ease-in-out infinite; }
+#customerMap { height: 260px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); z-index: 1; }
 @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -882,8 +883,40 @@ async function loginUser(identifier,password){
       body: JSON.stringify({ identifier, password })
     });
     const data = await resp.json().catch(()=>({ message: 'Invalid response' }));
-    if(!resp.ok) return { error: data.message || 'Invalid email/username or password' };
-    return { success: true, user: data.user };
+    if(resp.ok) return { success: true, user: data.user };
+
+    // Delivery boys have their own separate account collection, not a
+    // regular User account, so a failed user-login is retried here against
+    // the delivery boy login before giving up - this lets a delivery
+    // account sign in from this same normal sign-in form instead of only
+    // being able to log in on deliveryauth.html directly.
+    const deliveryResp = await fetch("http://localhost:5000/api/deliveryboys/login", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: identifier, password })
+    });
+    const deliveryData = await deliveryResp.json().catch(()=>null);
+    if(deliveryResp.ok && deliveryData && deliveryData.deliveryBoy){
+      const db = deliveryData.deliveryBoy;
+      // Also store the session the way deliveryauth.html expects it, so
+      // tapping the "Delivery" nav button lands them already signed in
+      // there instead of asking them to log in a second time.
+      localStorage.setItem('deliveryBoy', JSON.stringify(db));
+      localStorage.setItem('deliveryAuthToken', 'session');
+      return {
+        success: true,
+        user: {
+          id: db._id,
+          name: db.name,
+          email: db.email,
+          phone: db.phone,
+          address: '',
+          role: 'delivery'
+        }
+      };
+    }
+
+    return { error: data.message || 'Invalid email/username or password' };
   }catch(err){
     return { error: 'Cannot connect to backend' };
   }
@@ -1272,11 +1305,15 @@ function downloadInvoice(orderId) {
 }
 async function getMapCardForOrder(order){
   if(!order || !order.deliveryBoyId) return '';
+  const callBtn = order.deliveryBoyPhone
+    ? `<a class="btn btn-sm" href="tel:${order.deliveryBoyPhone}" style="background:var(--green);color:#fff;display:inline-flex;align-items:center;gap:6px;text-decoration:none;margin-top:10px"><i class="fas fa-phone"></i> Call ${order.deliveryBoyName || 'Delivery Boy'}</a>`
+    : '';
   return `<div class="delivery-map-card">
     <h4><i class="fas fa-map-marker-alt"></i> Live Delivery Tracking</h4>
     <div id="customerMapStatus" class="delivery-map-status"><span class="pulse"></span> Loading delivery boy location...</div>
     <div id="customerMap"></div>
     <p style="margin-top:10px;color:var(--fg-muted);font-size:0.85rem"><i class="fas fa-info-circle"></i> ${order.deliveryBoyName ? order.deliveryBoyName : 'Your delivery boy'} is sharing their live location so you can track the order in real time.</p>
+    ${callBtn}
   </div>`;
 }
 
@@ -1297,6 +1334,8 @@ async function getUserOrders() {
 }
 
 let customerMapRefreshInterval = null;
+let customerLeafletMap = null;
+let customerLeafletMarker = null;
 
 function startCustomerMapRefresh(order) {
   stopCustomerMapRefresh();
@@ -1304,7 +1343,6 @@ function startCustomerMapRefresh(order) {
   const statusEl = document.getElementById('customerMapStatus');
   const mapEl = document.getElementById('customerMap');
   if (statusEl) statusEl.textContent = 'Loading delivery boy location...';
-  if (mapEl) mapEl.innerHTML = '<p style="color:var(--fg-muted);font-size:0.9rem">Live location updates will appear here.</p>';
 
   async function refresh() {
     try {
@@ -1314,9 +1352,21 @@ function startCustomerMapRefresh(order) {
         if (statusEl) statusEl.textContent = 'Unable to load location';
         return;
       }
-      if (statusEl) statusEl.textContent = `Delivery boy is nearby (${data.location.lat.toFixed(3)}, ${data.location.lng.toFixed(3)})`;
-      if (mapEl) {
-        mapEl.innerHTML = `<div style="padding:18px;border:1px solid var(--border);border-radius:14px;background:rgba(250,246,241,0.95);color:var(--fg);font-size:0.92rem;"><strong>Latitude:</strong> ${data.location.lat.toFixed(5)}<br><strong>Longitude:</strong> ${data.location.lng.toFixed(5)}</div>`;
+      const { lat, lng } = data.location;
+      if (statusEl) {
+        statusEl.classList.add('active');
+        statusEl.innerHTML = `<span class="pulse"></span> Delivery boy is on the move`;
+      }
+      // Render a real embedded map (Leaflet + OpenStreetMap, same library
+      // already used on the delivery boy's own app) instead of just
+      // printing raw coordinates as text.
+      if (mapEl && !customerLeafletMap) {
+        customerLeafletMap = L.map('customerMap').setView([lat, lng], 15);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(customerLeafletMap);
+        customerLeafletMarker = L.marker([lat, lng]).addTo(customerLeafletMap).bindPopup(order.deliveryBoyName || 'Delivery boy').openPopup();
+      } else if (customerLeafletMap && customerLeafletMarker) {
+        customerLeafletMarker.setLatLng([lat, lng]);
+        customerLeafletMap.panTo([lat, lng]);
       }
     } catch (error) {
       if (statusEl) statusEl.textContent = 'Location fetch failed';
@@ -1331,6 +1381,11 @@ function stopCustomerMapRefresh() {
   if (customerMapRefreshInterval) {
     clearInterval(customerMapRefreshInterval);
     customerMapRefreshInterval = null;
+  }
+  if (customerLeafletMap) {
+    customerLeafletMap.remove();
+    customerLeafletMap = null;
+    customerLeafletMarker = null;
   }
 }
 

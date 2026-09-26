@@ -157,6 +157,20 @@
       pointer-events: none;
     }
     .toast.show { opacity: 1; }
+
+    /* Mobile responsiveness - this page had none before, so on narrow
+       phones the header row (icon + title + queue badge + menu button)
+       could overflow off-screen instead of wrapping, and the order card's
+       fixed 36px padding left very little room for content. */
+    @media (max-width: 480px) {
+      body { padding: 20px 12px; }
+      header { flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+      header h1 { font-size: 1.3rem; }
+      .queue-badge { font-size: 0.72rem; padding: 3px 10px; }
+      .order-card, .empty-state { padding: 20px; }
+      .order-number { font-size: 1.5rem; }
+      .item-row { font-size: 0.95rem; flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>

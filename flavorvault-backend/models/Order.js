@@ -52,6 +52,13 @@ const orderSchema = new mongoose.Schema({
     default: ""
   },
 
+  // Lets the customer's live-tracking view show a "Call [name]" button
+  // with a real number, instead of just a name with nothing to act on.
+  deliveryBoyPhone: {
+    type: String,
+    default: ""
+  },
+
   paymentMethod: {
     type: String,
     default: "COD"

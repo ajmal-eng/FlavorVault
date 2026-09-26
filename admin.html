@@ -373,6 +373,14 @@ select.form-input { cursor: pointer; }
   .admin-stat-value, .dashboard-card h1 { font-size: 1.4rem !important; }
 
   .food-upload-btn { width: 100%; justify-content: center; }
+
+  /* Order management cards were squeezing order-left/order-right into two
+     cramped columns on phones instead of stacking, and the top row
+     (order id + price + status) could overflow instead of wrapping. */
+  .order-body { flex-direction: column; }
+  .order-top { flex-wrap: wrap; gap: 10px; }
+  .order-price { font-size: 22px; }
+  .modal { padding: 24px; }
 }
 @media (max-width: 480px) {
   .section-inner { padding: 0 12px; }
